@@ -5,8 +5,8 @@ const FILES={fond:'stade.png',vif:'vif_or.png',harry:'harry.png',drago:'drago.pn
 const CH=[
  {id:'harry',nom:'Harry',vit:8,h:90,cap:'Turbo',desc:'Vitesse x1.6 (2 s)',nat:1},
  {id:'hermione',nom:'Hermione',vit:7,h:90,cap:'Bouclier',desc:'Immunité cognards (3 s)',nat:1},
- {id:'elise',nom:'Elise',vit:9,h:130,cap:'Petrificus',desc:'Fige rival + cognards (2 s)',nat:1}];
-const DIF=[{n:'Facile',v:4.2,err:170,bl:2,sn:.8},{n:'Normal',v:5.6,err:90,bl:2,sn:1},{n:'Difficile',v:7,err:35,bl:3,sn:1.2}];
+ {id:'elise',nom:'Elise',vit:9,h:130,cap:'Petrificus',desc:'Fige rival + cognards (2 s)',nat:-1}];
+const DIF=[{n:'Facile',v:4.2,err:170,look:0,rt:.5,bl:2,sn:.8},{n:'Normal',v:6.6,err:50,look:.2,rt:.35,bl:2,sn:1},{n:'Difficile',v:8.3,err:12,look:.45,rt:.2,bl:3,sn:1.2}];
 let diff=1,state='menu',G=null,last=0,muted=false,musicOn=false,touch=null,music,S={};
 const rand=(a,b)=>a+Math.random()*(b-a),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const hit=(r,p)=>p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h;
@@ -15,6 +15,7 @@ const difR=i=>({x:W/2-255+i*175,y:540,w:160,h:50});
 const COARSE=matchMedia('(pointer:coarse)').matches,Z=COARSE?72:50;
 const pauseR={x:W/2+120,y:14,w:Z,h:Z},muteR={x:W/2+130+Z,y:14,w:Z,h:Z},abP={x:W-110,y:H-110,r:55};
 const crR={x:W/2-150,y:280,w:300,h:60},joR={x:W/2-150,y:370,w:300,h:60},backR={x:W/2-100,y:640,w:200,h:50},onR={x:W/2+10,y:600,w:380,h:50},raceR={x:W/2-390,y:600,w:380,h:50},m0R={x:W/2-300,y:100,w:290,h:56},m1R={x:W/2+10,y:100,w:290,h:56};
+const CHO=CH.concat([{id:'drago',nom:'Drago',vit:7,h:90,cap:'Dash',nat:1}]),lcR=i=>({x:(W-4*200-90)/2+i*230,y:200,w:200,h:290});
 const GOAL=1000;let rmode=0,btab=0;
 const nameR={x:30,y:20,w:260,h:44},boardR={x:30,y:72,w:260,h:44},tabR=i=>({x:W/2-345+i*235,y:100,w:220,h:50});
 let pname='';try{pname=localStorage.getItem('quid_name')||''}catch(e){}
@@ -31,7 +32,7 @@ async function aud(u){const b=await(await fetch('assets/'+u)).blob();return new 
 async function boot(){
   draw();
   for(const k in FILES)A[k]=await loadImg(FILES[k]);
-  try{music=await aud('musique_magie.mp3');music.loop=true;music.volume=.4;
+  try{music=await aud('musique_fond.mp3');music.loop=true;music.volume=.4;
       S.attrape=await aud('attrape.wav');S.collision=await aud('collision.wav')}catch(e){}
   requestAnimationFrame(loop);
 }
@@ -52,14 +53,14 @@ function newGame(ch){
    r:{x:1130,y:360,h:90,face:-1,stun:0,inv:0,score:0,tx:640,ty:360,nt:0},
    s:{x:640,y:360,ang:rand(0,6.28),fade:0},
    bl:Array.from({length:d.bl},(_,i)=>{const a=rand(0,6.28);return{x:rand(300,980),y:i%2?150:570,vx:Math.cos(a)*5,vy:Math.sin(a)*5}})};
-  G.ev=[];G.me='p';G.frz=0;state='count';
+  G.ev=[];G.me='p';G.frz=0;G.rch='drago';G.fzo='p';state='count';
 }
 function ability(){
   if(state!=='play')return;
   if(net.role==='guest'){net.conn&&net.conn.send({t:'ab'});return}
   useAb(G.p,G.ch.id);
 }
-function useAb(o,id){if(o.cd>0)return;o.cd=6;if(id==='harry')o.boost=2;else if(id==='hermione')o.shield=3;else if(id==='elise'){if(G.mode==='race'){for(const q of G.obs)if(q.t!=='s'&&q.x<W+20)burst(q.x,q.t==='p'?H/2:q.y);G.obs=G.obs.filter(q=>q.t==='s'||q.x>=W+20)}else G.frz=2;o.cd=10}else o.dash=.25}
+function useAb(o,id){if(o.cd>0)return;o.cd=6;if(id==='harry')o.boost=2;else if(id==='hermione')o.shield=3;else if(id==='elise'){if(G.mode==='race'){for(const q of G.obs)if(q.t!=='s'&&q.x<W+20)burst(q.x,q.t==='p'?H/2:q.y);G.obs=G.obs.filter(q=>q.t==='s'||q.x>=W+20)}else{G.frz=2;G.fzo=o===G.p?'p':'r'}o.cd=10}else o.dash=.25}
 function burst(x,y){for(let i=0;i<30;i++){const a=rand(0,6.28),v=rand(2,9);G.parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:rand(.4,.9)})}}
 function respawn(){
   const s=G.s;s.x=Math.random()<.5?60:W-60;s.y=rand(80,H-80);
@@ -81,110 +82,18 @@ function update(dt){
 
   /* joueur */
   const [ax,ay]=readInput(p);
-  const sp=G.ch.vit*(p.stun>0?.3:1)*(p.boost>0?1.6:1)*(p.dash>0?3:1);
+  const sp=G.ch.vit*(fz&&G.fzo==='r'?0:1)*(p.stun>0?.3:1)*(p.boost>0?1.6:1)*(p.dash>0?3:1);
   p.x=Math.min(W-40,Math.max(40,p.x+ax*sp*k));p.y=Math.min(H-40,Math.max(40,p.y+ay*sp*k));
   if(ax)p.face=ax>0?1:-1;
 
   /* Drago */
-  if(fz){}else if(net.role==='host'){const i=net.inp,v=6.5*(r.stun>0?.3:1)*(r.dash>0?3:1);
-    r.x=Math.min(W-40,Math.max(40,r.x+i.ax*v*k));r.y=Math.min(H-40,Math.max(40,r.y+i.ay*v*k));if(i.ax)r.face=i.ax>0?1:-1}else{
-  r.nt-=dt;if(r.nt<=0){r.nt=.5;r.tx=s.x+rand(-d.err,d.err);r.ty=s.y+rand(-d.err,d.err)}
-  {const dx=r.tx-r.x,dy=r.ty-r.y,l=Math.hypot(dx,dy)||1,v=d.v*(r.stun>0?.3:1)*Math.min(1,l/20);
-   r.x+=dx/l*v*k;r.y+=dy/l*v*k;if(Math.abs(dx)>4)r.face=dx>0?1:-1}}
-  const dd=dist(p,r),min=(p.h+r.h)*.35;
-  if(dd<min){const nx=(p.x-r.x)/(dd||1),ny=(p.y-r.y)/(dd||1);
-    p.x+=nx*6*k;p.y+=ny*6*k;r.x-=nx*6*k;r.y-=ny*6*k;
-    if(G.cc<=0){fx('c');G.cc=.5}}
-
-  /* vif d'or : fuit, zigzag, accélère */
-  s.ang+=(Math.random()-.5)*.25*k;
-  if(Math.random()<.012*k)s.ang+=(Math.random()<.5?-1:1)*1.2;
-  for(const o of[p,r]){const dx=s.x-o.x,dy=s.y-o.y;
-    if(Math.hypot(dx,dy)<230){let df=Math.atan2(dy,dx)-s.ang;df=Math.atan2(Math.sin(df),Math.cos(df));s.ang+=df*.12*k}}
-  const ss=(5+G.el*.04)*d.sn*(s.fade>0?.5:1);
-  s.x+=Math.cos(s.ang)*ss*k;s.y+=Math.sin(s.ang)*ss*k;
-  if(s.fade>0)s.fade-=dt;
-  if(s.x<40){s.x=40;s.ang=Math.PI-s.ang}if(s.x>W-40){s.x=W-40;s.ang=Math.PI-s.ang}
-  if(s.y<40){s.y=40;s.ang=-s.ang}if(s.y>H-40){s.y=H-40;s.ang=-s.ang}
-  G.trail.push({x:s.x,y:s.y});if(G.trail.length>14)G.trail.shift();
-  if(s.fade<=0)for(const o of[p,r]){
-    const rad=o.h*.4+10+(o===p&&G.ch.id==='harry'?15:0);
-    if(dist(o,s)<rad){o.score+=10;fx('a',s.x,s.y);respawn();break}}
-
-  /* cognards */
-  for(const b of G.bl){
-    b.x+=b.vx*k*(fz?0:1);b.y+=b.vy*k*(fz?0:1);
-    if(b.x<20||b.x>W-20)b.vx*=-1;if(b.y<20||b.y>H-20)b.vy*=-1;
-    b.x=Math.min(W-20,Math.max(20,b.x));b.y=Math.min(H-20,Math.max(20,b.y));
-    for(const o of[p,r]){
-      if(!fz&&dist(o,b)<o.h*.35+18){
-        const a=Math.atan2(b.y-o.y,b.x-o.x),v=Math.hypot(b.vx,b.vy);b.vx=Math.cos(a)*v;b.vy=Math.sin(a)*v;
-        if(o.inv<=0&&!(o===p&&p.shield>0)){o.stun=1.5;o.inv=2.5;fx('c')}
-      }}}
-  for(const q of G.parts){q.x+=q.vx*k;q.y+=q.vy*k;q.l-=dt}
-  G.parts=G.parts.filter(q=>q.l>0);
-}
-
-/* ---------- réseau (PeerJS / WebRTC) ---------- */
-function readInput(o){
-  let ax=(keys.arrowright||keys.d?1:0)-(keys.arrowleft||keys.q||keys.a?1:0),ay=(keys.arrowdown||keys.s?1:0)-(keys.arrowup||keys.z||keys.w?1:0);
-  if(joy.on){ax=joy.x;ay=joy.y}else if(touch){const dx=touch.x-o.x,dy=touch.y-o.y,l=Math.hypot(dx,dy);if(l>14){ax=dx/l;ay=dy/l}}
-  const l=Math.hypot(ax,ay);if(l>1){ax/=l;ay/=l}return[ax,ay];
-}
-function fx(n,x,y){if(n==='a'){sfx('attrape');burst(x,y)}else sfx('collision');if(net.role==='host')G.ev.push([n,x,y])}
-function leave(){const p=net.peer;net.role=null;net.conn=null;net.peer=null;net.ready=false;net.msg='';try{p&&p.destroy()}catch(e){}}
-function fail(m){if(!net.role)return;leave();net.msg=m;state='menu'}
-function hostGame(){
-  try{leave();net.role='host';net.msg='';
-  net.code=Array.from({length:4},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.random()*24|0]).join('');
-  net.peer=new Peer('qcpwa-'+net.code);
-  net.peer.on('error',e=>e.type==='unavailable-id'?hostGame():fail('Erreur réseau'));
-  net.peer.on('connection',c=>{if(net.conn){c.close();return}net.conn=c;c.on('open',()=>net.ready=true);c.on('data',onData);c.on('close',()=>fail('Connexion perdue'))});
-  }catch(e){fail('Réseau indisponible')}
-}
-function joinGame(){
-  const c=(prompt('Code de la partie (4 lettres) :')||'').trim().toUpperCase();if(c.length!==4)return;
-  try{leave();net.role='guest';net.msg='Connexion…';net.peer=new Peer();
-  net.peer.on('open',()=>{const cn=net.peer.connect('qcpwa-'+c,{reliable:true});net.conn=cn;
-    cn.on('open',()=>net.msg='Connecté ! L\'hôte choisit son personnage…');cn.on('data',onData);cn.on('close',()=>fail('Connexion perdue'))});
-  net.peer.on('error',e=>fail(e.type==='peer-unavailable'?'Code introuvable':'Erreur réseau'));
-  }catch(e){fail('Réseau indisponible')}
-}
-function sendSnap(){
-  if(!net.conn||!net.conn.open)return;const {p,r,s}=G;
-  const f=o=>({x:o.x|0,y:o.y|0,face:o.face,stun:o.stun,boost:o.boost,shield:o.shield,dash:o.dash,cd:o.cd,score:o.score});
-  net.conn.send({t:'s',st:state,tm:G.t,fz:G.frz,cnt:G.cnt,el:G.el,p:f(p),r:f(r),s:{x:s.x|0,y:s.y|0,fade:s.fade},bl:G.bl.map(b=>({x:b.x|0,y:b.y|0})),ev:G.ev.splice(0)});
-}
-function netTick(dt){net.acc+=dt;if(net.acc>=.033){net.acc=0;sendSnap()}}
-function guestTick(dt){
-  const k=dt*60;for(const q of G.parts){q.x+=q.vx*k;q.y+=q.vy*k;q.l-=dt}G.parts=G.parts.filter(q=>q.l>0);
-  G.trail.push({x:G.s.x,y:G.s.y});if(G.trail.length>14)G.trail.shift();
-  net.acc+=dt;if(net.acc>=.033&&net.conn&&net.conn.open){net.acc=0;const[ax,ay]=readInput(G.r);net.conn.send({t:'i',ax,ay})}
-}
-function onData(m){
-  if(m.t==='i')net.inp=m;
-  else if(m.t==='ab'&&G&&state==='play')useAb(G.r,'dash');
-  else if(m.t==='start'&&net.role==='guest'){diff=m.diff;newGame(CH.find(c=>c.id===m.ch));G.me='r';net.msg=''}
-  else if(m.t==='s'&&net.role==='guest'&&G&&state!=='lobby'){
-    const was=state;G.t=m.tm;G.frz=m.fz;G.cnt=m.cnt;G.el=m.el;Object.assign(G.p,m.p);Object.assign(G.r,m.r);Object.assign(G.s,m.s);G.bl=m.bl;
-    m.ev.forEach(e=>fx(e[0],e[1],e[2]));if(m.st==='result'&&was!=='result')G.endT=0;state=m.st}
-}
-function lobbyClick(m){
-  if(hit(backR,m)){leave();state='menu';return}
-  if(!net.role){if(hit(crR,m))hostGame();else if(hit(joR,m))joinGame()}
-  else if(net.role==='host'&&net.ready)CH.forEach((c,i)=>{if(hit(cardR(i),m)){newGame(c);net.inp={ax:0,ay:0};net.conn.send({t:'start',ch:c.id,diff})}});
-}
-function drawLobby(){
-  bg(W/2,H/2,.7);txt('JEU EN LIGNE',W/2,50,44,'#ffd700');
-  if(!net.role){
-    rbox(crR,'#ffd700');txt('Créer une partie',W/2,crR.y+30,26,'#0a0a14');
-    rbox(joR,'#32324a');txt('Rejoindre avec un code',W/2,joR.y+30,26,'#fff');
-    txt('Chacun son téléphone : le créateur joue le sorcier, l\'invité joue Drago.',W/2,510,20,'#ccc');
-  }else if(net.role==='host'){
-    txt('Code : '+net.code,W/2,net.ready?115:260,64,'#fff');
-    txt(net.ready?'Joueur connecté ! Choisis ton personnage :':'Donne ce code à l\'autre joueur… en attente',W/2,net.ready?175:340,24,'#ffd700');
-    if(net.ready)CH.forEach((c,i)=>{const r=cardR(i);rbox(r,'rgba(30,30,55,.9)','#ffd700');spr(A[c.id],r.x+110,r.y+110,c.h>100?150:110,false);txt(c.nom,r.x+110,r.y+220,30,'#fff');txt(c.cap,r.x+110,r.y+256,22,'#ffd700')});
-  }else txt(net.msg,W/2,300,30,'#fff');
+  if(fz&&G.fzo==='p'){}else{
+    const mine=net.role==='host'?net.hpick:net.gpick;
+    if(net.role==='host')txt('Code : '+net.code,W/2,net.ready?105:260,60,'#fff');
+    if(!net.ready)txt(net.role==='host'?'Donne ce code à l\'autre joueur… en attente':net.msg,W/2,net.role==='host'?340:300,24,'#ffd700');
+    else{txt(mine?'En attente de l\'autre joueur…':'Joueur connecté ! Choisis ton personnage :',W/2,170,24,'#ffd700');
+      CHO.forEach((c,i)=>{const r=lcR(i);rbox(r,mine===c?'rgba(90,70,10,.95)':'rgba(30,30,55,.9)',mine===c?'#fff':'#ffd700');spr(A[c.id],r.x+100,r.y+110,c.h>100?150:110,false);txt(c.nom,r.x+100,r.y+220,28,'#fff');txt(c.cap,r.x+100,r.y+256,20,'#ffd700')})}
+  }
   if(net.msg&&net.role!=='guest')txt(net.msg,W/2,580,22,'#ff8080');
   rbox(backR,'#32324a');txt(net.role?'Annuler':'Retour',W/2,backR.y+25,24,'#fff');
 }
@@ -284,6 +193,12 @@ function drawBoard(){
 }
 function boardClick(m){if(hit(backR,m)){state='menu';return}for(let i=0;i<3;i++)if(hit(tabR(i),m))btab=i}
 
+function startOnline(){
+  const hc=net.hpick,gc=net.gpick;newGame(hc);G.rch=gc.id;G.r.h=gc.h;G.r.vit=gc.vit;
+  net.inp={ax:0,ay:0};net.conn.send({t:'start',ch:hc.id,gch:gc.id,diff});net.hpick=net.gpick=null;
+}
+const rcap=()=>(CHO.find(c=>c.id===G.rch)||{cap:'Dash'}).cap,rname=()=>(CHO.find(c=>c.id===G.rch)||{nom:'Drago'}).nom;
+
 /* ---------- rendu ---------- */
 function txt(s,x,y,size,col,al='center'){
   g.font=`bold ${size}px Georgia,serif`;g.textAlign=al;g.textBaseline='middle';
@@ -316,7 +231,7 @@ function drawMenu(){
 }
 function drawGame(){if(G.mode==='race')drawRace();else drawMatch()}
 function drawMatch(){
-  const {p,r,s,ch,d}=G;const me=G.me==='r'?r:p,cap=G.me==='r'?'Dash':ch.cap;
+  const {p,r,s,ch,d}=G;const me=G.me==='r'?r:p,cap=G.me==='r'?rcap():ch.cap;
   bg(p.x,p.y);
   g.save();
   for(let i=0;i<G.trail.length;i++){g.globalAlpha=i/G.trail.length*.5;g.fillStyle='#ffd700';
@@ -324,7 +239,7 @@ function drawMatch(){
   g.restore();
   for(const b of G.bl){g.beginPath();g.arc(b.x,b.y,18,0,7);g.fillStyle='#222';g.fill();g.strokeStyle='#e33';g.lineWidth=3;g.stroke()}
   for(const o of[p,r]){
-    const im=o===p?A[ch.id]:A.drago,fl=o.face*(o===p?ch.nat:1)<0;
+    const im=A[o===p?ch.id:G.rch],fl=o.face*(o===p?ch.nat:(CHO.find(c=>c.id===G.rch)||{nat:1}).nat)<0;
     if(o.boost>0||o.dash>0){g.fillStyle='rgba(255,215,0,.25)';g.beginPath();g.arc(o.x-o.face*30,o.y,o.h*.4,0,7);g.fill()}
     spr(im,o.x,o.y,o.h,fl,o.stun>0?.5+.4*Math.sin(G.el*30):1);
     if(o.shield>0){g.beginPath();g.arc(o.x,o.y,o.h*.7,0,7);g.strokeStyle='rgba(120,200,255,.9)';g.lineWidth=5;g.stroke();g.fillStyle='rgba(120,200,255,.2)';g.fill()}
@@ -334,11 +249,11 @@ function drawMatch(){
   for(const q of G.parts){g.globalAlpha=Math.max(0,q.l);g.fillStyle='#ffe96a';g.fillRect(q.x,q.y,4,4)}
   g.globalAlpha=1;
   if(G.frz>0){g.fillStyle='rgba(120,200,255,.12)';g.fillRect(0,0,W,H);g.strokeStyle='rgba(170,230,255,.95)';g.lineWidth=4;
-    for(const t of[{x:r.x,y:r.y,q:r.h*.5},...G.bl.map(b=>({x:b.x,y:b.y,q:26}))]){g.beginPath();g.arc(t.x,t.y,t.q,0,7);g.stroke()}
+    for(const t of[G.fzo==='r'?{x:p.x,y:p.y,q:p.h*.5}:{x:r.x,y:r.y,q:r.h*.5},...G.bl.map(b=>({x:b.x,y:b.y,q:26}))]){g.beginPath();g.arc(t.x,t.y,t.q,0,7);g.stroke()}
     txt('PETRIFICUS TOTALUS !',W/2,130,44,'#9fe0ff')}
   if(net.role)txt('▼',me.x,me.y-me.h*.62,22,'#fff');
   txt(`${ch.nom}: ${p.score}`,30,45,32,'#ffd700','left');
-  txt(`Drago: ${r.score}`,W-30,45,32,'#ff5050','right');
+  txt(`${rname()}: ${r.score}`,W-30,45,32,'#ff5050','right');
   txt(`${Math.ceil(G.t)} s`,W/2,45,36,'#fff');
   rbox(pauseR,'rgba(0,0,0,.5)');txt('II',pauseR.x+Z/2,pauseR.y+Z/2,Z/2,'#fff');
   rbox(muteR,'rgba(0,0,0,.5)');txt(muted?'🔇':'🔊',muteR.x+Z/2,muteR.y+Z/2,Z/2,'#fff');
@@ -352,7 +267,7 @@ function drawResult(){if(G.mode==='race')return drawRaceResult();
   const {p,r}=G;bg(W/2,H/2,.7);
   const v=G.me==='r'?r.score>p.score:p.score>r.score,e=p.score===r.score;
   txt(e?'ÉGALITÉ':v?'VICTOIRE !':'DÉFAITE',W/2,110,80,e?'#fff':v?'#50ff78':'#ff5050');
-  txt(`${G.ch.nom} ${p.score} - ${r.score} Drago  (${G.d.n})`,W/2,200,38,'#fff');
+  txt(`${G.ch.nom} ${p.score} - ${r.score} ${rname()}  (${G.d.n})`,W/2,200,38,'#fff');
   txt('Derniers matchs',W/2,285,26,'#ffd700');
   hist().slice(-5).reverse().forEach((h,i)=>txt(`${h.j||h.n} ${h.p} - ${h.r} Drago (${h.dn})`,W/2,330+i*38,24,'#ddd'));
   txt('Meilleur score : '+best(),W/2,560,26,'#80ff78');
@@ -412,7 +327,7 @@ const joy={x:0,y:0,on:false};
 function updateUI(){
   const ig=!!G&&(state==='count'||state==='play'||state==='pause');
   document.body.classList.toggle('ig',ig);if(!ig)return;
-  const me=G.me==='r'?G.r:G.p,t=me.cd>0?String(Math.ceil(me.cd)):(G.me==='r'?'Dash':G.ch.cap),l=document.getElementById('pwl');
+  const me=G.me==='r'?G.r:G.p,t=me.cd>0?String(Math.ceil(me.cd)):(G.me==='r'?rcap():G.ch.cap),l=document.getElementById('pwl');
   if(l.textContent!==t)l.textContent=t;document.getElementById('pw').classList.toggle('cd',me.cd>0);
 }
 (function(){
