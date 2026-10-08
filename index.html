@@ -13,10 +13,28 @@
 html,body{margin:0;height:100%;background:#0a0a14;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
 body{display:flex;align-items:center;justify-content:center}
 canvas{width:100vw;height:calc(100vw*9/16);max-height:100vh;max-width:calc(100vh*16/9);background:#000}
+.side{display:none;flex:1;height:100%;align-items:center;justify-content:center;visibility:hidden}
+body.ig .side{visibility:visible}
+#pw{width:96px;height:96px;border-radius:50%;border:4px solid #ffd700;background:rgba(255,215,0,.85);color:#0a0a14;font:bold 15px Georgia,serif;touch-action:none;padding:0}
+#pw.cd{background:rgba(60,60,80,.8);color:#fff;font-size:30px}
+#joy{width:100px;height:100px;border-radius:50%;border:3px solid rgba(255,215,0,.6);background:rgba(255,255,255,.08);position:relative;touch-action:none}
+#knob{position:absolute;left:25px;top:25px;width:50px;height:50px;border-radius:50%;background:rgba(255,215,0,.8);pointer-events:none}
+#rot{display:none}
+@media (pointer:coarse){
+ .side{display:flex;min-width:0}
+ canvas{width:min(calc(100vh*16/9),calc(100vw - 240px));height:auto;max-width:none;aspect-ratio:16/9}
+}
+@media (pointer:coarse) and (orientation:portrait){
+ #rot{display:flex;position:fixed;inset:0;z-index:9;background:#0a0a14;color:#ffd700;align-items:center;justify-content:center;text-align:center;font:bold 24px Georgia,serif;padding:20px}
+}
 </style>
 </head>
 <body>
+<div class="side"><button id="pw"><span id="pwl"></span></button></div>
 <canvas id="c" width="1280" height="720"></canvas>
+<div class="side"><div id="joy"><div id="knob"></div></div></div>
+<div id="rot">Tourne ton téléphone en mode paysage 📱↻</div>
+<script src="peerjs.min.js"></script>
 <script src="game.js"></script>
 <script>
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js'));
