@@ -15,7 +15,11 @@ const difR=i=>({x:W/2-255+i*175,y:540,w:160,h:50});
 const COARSE=matchMedia('(pointer:coarse)').matches,Z=COARSE?72:50;
 const pauseR={x:W/2+120,y:14,w:Z,h:Z},muteR={x:W/2+130+Z,y:14,w:Z,h:Z},abP={x:W-110,y:H-110,r:55};
 const crR={x:W/2-150,y:280,w:300,h:60},joR={x:W/2-150,y:370,w:300,h:60},backR={x:W/2-100,y:640,w:200,h:50},onR={x:W/2+10,y:600,w:380,h:50},raceR={x:W/2-390,y:600,w:380,h:50},m0R={x:W/2-300,y:100,w:290,h:56},m1R={x:W/2+10,y:100,w:290,h:56};
-const GOAL=1000;let rmode=0;
+const GOAL=1000;let rmode=0,btab=0;
+const nameR={x:30,y:20,w:260,h:44},boardR={x:30,y:72,w:260,h:44},tabR=i=>({x:W/2-345+i*235,y:100,w:220,h:50});
+let pname='';try{pname=localStorage.getItem('quid_name')||''}catch(e){}
+function askName(){const n=(prompt('Ton nom de joueur :',pname)||'').trim().slice(0,12);if(n){pname=n;try{localStorage.setItem('quid_name',n)}catch(e){}}}
+function needName(){if(net.role==='guest')return;if(!pname)askName();if(!pname)pname='Joueur'}
 const swapR={x:W-310,y:20,w:280,h:44};
 let swap=false;try{swap=localStorage.getItem('quid_swap')==='1'}catch(e){}
 function setSwap(v){swap=v;document.body.classList.toggle('swap',v);try{localStorage.setItem('quid_swap',v?'1':'0')}catch(e){}}
@@ -27,7 +31,7 @@ async function aud(u){const b=await(await fetch('assets/'+u)).blob();return new 
 async function boot(){
   draw();
   for(const k in FILES)A[k]=await loadImg(FILES[k]);
-  try{music=await aud('musique_fond.mp3');music.loop=true;music.volume=.4;
+  try{music=await aud('musique_magie.mp3');music.loop=true;music.volume=.4;
       S.attrape=await aud('attrape.wav');S.collision=await aud('collision.wav')}catch(e){}
   requestAnimationFrame(loop);
 }
@@ -37,12 +41,12 @@ function startMusic(){if(!musicOn&&music){musicOn=true;music.play().catch(()=>mu
 
 /* ---------- scores ---------- */
 const hist=()=>{try{return JSON.parse(localStorage.getItem('quid_hist'))||[]}catch(e){return[]}};
-function saveScore(e){try{const h=hist();h.push(e);localStorage.setItem('quid_hist',JSON.stringify(h.slice(-30)))}catch(e){}}
+function saveScore(e){try{const h=hist();h.push(e);localStorage.setItem('quid_hist',JSON.stringify(h.slice(-200)))}catch(e){}}
 const best=()=>hist().reduce((m,e)=>Math.max(m,e.p),0);
 
 /* ---------- partie ---------- */
 function newGame(ch){
-  const d=DIF[diff];
+  needName();const d=DIF[diff];
   G={ch,d,t:60,cnt:3.99,el:0,cc:0,parts:[],trail:[],
    p:{x:150,y:360,h:ch.h,face:1,stun:0,inv:0,boost:0,shield:0,dash:0,cd:0,score:0},
    r:{x:1130,y:360,h:90,face:-1,stun:0,inv:0,score:0,tx:640,ty:360,nt:0},
@@ -63,7 +67,7 @@ function respawn(){
 }
 function endGame(){
   const {p,r,ch,d}=G;
-  saveScore({n:ch.nom,dn:d.n,p:p.score,r:r.score});
+  saveScore({j:pname,n:ch.nom,dn:d.n,p:p.score,r:r.score});
   state='result';G.endT=0;if(net.role==='host')sendSnap();
 }
 
@@ -189,6 +193,7 @@ function drawLobby(){
 const cl=(v,a,b)=>Math.min(b,Math.max(a,v));
 const rbest=()=>{try{return JSON.parse(localStorage.getItem('quid_race'))||{}}catch(e){return{}}};
 function newRace(c){
+  needName();
   G={mode:'race',rm:rmode,ch:c,d:DIF[diff],cnt:3.99,el:0,dist:0,bonus:0,scroll:0,lives:3,slow:0,spawn:1,obs:[],parts:[],ev:[],me:'p',frz:0,rec:rbest(),
      p:{x:300,y:360,h:c.h,face:1,stun:0,inv:0,boost:0,shield:0,dash:0,cd:0,score:0},r:{cd:0}};
   state='count';
@@ -196,6 +201,7 @@ function newRace(c){
 function crash(){const p=G.p;fx('c');p.inv=2;p.stun=.5;G.slow=1;p.x=cl(p.x-70,40,W-40);if(G.rm===0&&--G.lives<=0)endRace()}
 function endRace(){
   try{const b=rbest();if(G.rm===0)b.dist=Math.max(b.dist||0,G.dist|0);else b.time=Math.min(b.time||1e9,G.el);localStorage.setItem('quid_race',JSON.stringify(b))}catch(e){}
+  try{const l=JSON.parse(localStorage.getItem('quid_rl'))||[];l.push({j:pname,rm:G.rm,v:G.rm?G.el:G.dist|0,c:G.ch.nom});localStorage.setItem('quid_rl',JSON.stringify(l.slice(-200)))}catch(e){}
   G.rec=rbest();state='result';G.endT=0;
 }
 function updateRace(dt){
@@ -264,6 +270,20 @@ function rmenuClick(m){
   CH.forEach((c,i)=>{if(hit(cardR(i),m))newRace(c)});
 }
 
+function drawBoard(){
+  bg(W/2,H/2,.75);txt('🏆 CLASSEMENT',W/2,50,44,'#ffd700');
+  ['Matchs','Distance','Contre la montre'].forEach((n,i)=>{const r=tabR(i);rbox(r,i===btab?'#ffd700':'#32324a');txt(n,r.x+110,r.y+26,22,i===btab?'#0a0a14':'#fff')});
+  let rows;
+  if(btab===0)rows=hist().filter(h=>h.j).sort((a,b)=>b.p-a.p).slice(0,8).map(h=>[h.j+' ('+h.n+')',h.p+' pts']);
+  else{let l=[];try{l=JSON.parse(localStorage.getItem('quid_rl'))||[]}catch(e){}
+    l=l.filter(e=>e.rm===btab-1).sort((a,b)=>btab===1?b.v-a.v:a.v-b.v);
+    rows=l.slice(0,8).map(e=>[e.j+' ('+e.c+')',btab===1?e.v+' m':e.v.toFixed(1)+' s'])}
+  if(!rows.length)txt('Aucun score pour l\'instant',W/2,330,26,'#aaa');
+  rows.forEach((r,i)=>{const y=210+i*48;txt((i+1)+'.',W/2-330,y,28,'#ffd700','left');txt(r[0],W/2-280,y,28,'#fff','left');txt(r[1],W/2+330,y,28,'#80ff78','right')});
+  rbox(backR,'#32324a');txt('Retour',W/2,backR.y+25,24,'#fff');
+}
+function boardClick(m){if(hit(backR,m)){state='menu';return}for(let i=0;i<3;i++)if(hit(tabR(i),m))btab=i}
+
 /* ---------- rendu ---------- */
 function txt(s,x,y,size,col,al='center'){
   g.font=`bold ${size}px Georgia,serif`;g.textAlign=al;g.textBaseline='middle';
@@ -291,7 +311,7 @@ function drawMenu(){
     txt(c.desc,r.x+110,r.y+256,15,'#ccc')});
   txt('Difficulté',W/2,515,24,'#fff');
   DIF.forEach((d,i)=>{const r=difR(i);rbox(r,i===diff?'#ffd700':'#32324a');txt(d.n,r.x+80,r.y+26,24,i===diff?'#0a0a14':'#fff')});
-  txt('Meilleur score : '+best(),30,40,22,'#80ff78','left');rbox(onR,'#2a5cff');txt('Jouer en ligne (2 tél.)',onR.x+190,onR.y+25,24,'#fff');rbox(raceR,'#1f9d55');txt('Mode Course',raceR.x+190,raceR.y+25,24,'#fff');if(COARSE){rbox(swapR,'#32324a','#ffd700');txt(swap?'Joystick à gauche ⇄':'Joystick à droite ⇄',swapR.x+140,swapR.y+22,21,'#fff')}if(net.msg)txt(net.msg,W/2,185,24,'#ff8080');
+  rbox(nameR,'#32324a');txt('👤 '+(pname||'Ton nom'),nameR.x+130,nameR.y+22,21,'#fff');rbox(boardR,'#32324a');txt('🏆 Classement',boardR.x+130,boardR.y+22,21,'#fff');rbox(onR,'#2a5cff');txt('Jouer en ligne (2 tél.)',onR.x+190,onR.y+25,24,'#fff');rbox(raceR,'#1f9d55');txt('Mode Course',raceR.x+190,raceR.y+25,24,'#fff');if(COARSE){rbox(swapR,'#32324a','#ffd700');txt(swap?'Joystick à gauche ⇄':'Joystick à droite ⇄',swapR.x+140,swapR.y+22,21,'#fff')}if(net.msg)txt(net.msg,W/2,185,24,'#ff8080');
   txt('Flèches / ZQSD ou toucher pour bouger • Espace = pouvoir • P = pause • M = muet',W/2,675,18,'#aaa');
 }
 function drawGame(){if(G.mode==='race')drawRace();else drawMatch()}
@@ -334,14 +354,14 @@ function drawResult(){if(G.mode==='race')return drawRaceResult();
   txt(e?'ÉGALITÉ':v?'VICTOIRE !':'DÉFAITE',W/2,110,80,e?'#fff':v?'#50ff78':'#ff5050');
   txt(`${G.ch.nom} ${p.score} - ${r.score} Drago  (${G.d.n})`,W/2,200,38,'#fff');
   txt('Derniers matchs',W/2,285,26,'#ffd700');
-  hist().slice(-5).reverse().forEach((h,i)=>txt(`${h.n} ${h.p} - ${h.r} Drago (${h.dn})`,W/2,330+i*38,24,'#ddd'));
+  hist().slice(-5).reverse().forEach((h,i)=>txt(`${h.j||h.n} ${h.p} - ${h.r} Drago (${h.dn})`,W/2,330+i*38,24,'#ddd'));
   txt('Meilleur score : '+best(),W/2,560,26,'#80ff78');
   txt('Touche l\'écran ou appuie sur R pour revenir au menu',W/2,650,24,'#fff');
 }
 function draw(){
   g.clearRect(0,0,W,H);
   if(!A.fond){g.fillStyle='#0a0a14';g.fillRect(0,0,W,H);txt('Chargement…',W/2,H/2,40,'#ffd700');return}
-  if(state==='menu')drawMenu();else if(state==='result')drawResult();else if(state==='lobby')drawLobby();else if(state==='rmenu')drawRMenu();else drawGame();
+  if(state==='menu')drawMenu();else if(state==='result')drawResult();else if(state==='lobby')drawLobby();else if(state==='rmenu')drawRMenu();else if(state==='board')drawBoard();else drawGame();
 }
 function loop(t){
   const dt=Math.min(.05,(t-last)/1000||0);last=t;
@@ -361,8 +381,11 @@ cv.addEventListener('pointerdown',e=>{
     CH.forEach((c,i)=>{if(hit(cardR(i),m))newGame(c)});
     if(COARSE&&hit(swapR,m))setSwap(!swap);
     if(hit(raceR,m))state='rmenu';
+    if(hit(nameR,m))askName();
+    if(hit(boardR,m)){btab=0;state='board'}
     if(hit(onR,m)){net.msg='';state='lobby'}
   }else if(state==='rmenu'){rmenuClick(m)}
+  else if(state==='board'){boardClick(m)}
   else if(state==='lobby'){lobbyClick(m)}
   else if(state==='result'){if(G.endT>.6){leave();state='menu'}}
   else if(state==='pause')pause();
