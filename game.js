@@ -2,10 +2,11 @@
 const cv=document.getElementById('c'),g=cv.getContext('2d'),W=1280,H=720;
 const A={},keys={};
 const FILES={fond:'stade.png',vif:'vif_or.png',harry:'harry.png',drago:'drago.png',hermione:'hermione.png',elise:'elise.png',foret:'foret.jpg',tribune:'tribune.jpg'};
+const VS=130/90; // taille d'affichage commune à tous les personnages (la hitbox reste h)
 const CH=[
  {id:'harry',nom:'Harry',vit:8,h:90,cap:'Turbo',desc:'Vitesse x1.6 (2 s)',nat:1},
  {id:'hermione',nom:'Hermione',vit:7,h:90,cap:'Bouclier',desc:'Immunité cognards (3 s)',nat:1},
- {id:'elise',nom:'Elise',vit:9,h:130,cap:'Petrificus',desc:'Fige rival + cognards (2 s)',nat:1}];
+ {id:'elise',nom:'Elise',vit:9,h:90,cap:'Petrificus',desc:'Fige rival + cognards (2 s)',nat:1}];
 const DIF=[{n:'Facile',v:4.2,err:170,bl:2,sn:.8},{n:'Normal',v:5.6,err:90,bl:2,sn:1},{n:'Difficile',v:7,err:35,bl:3,sn:1.2}];
 const MENUS=['menu','qmenu','smenu','rmenu','board','lobby'];
 let diff=1,state='menu',G=null,last=0,muted=false,musicOn=false,touch=null,music,S={};
@@ -185,7 +186,7 @@ function drawLobby(){
   }else if(net.role==='host'){
     txt('Code : '+net.code,W/2,net.ready?115:260,64,'#fff');
     txt(net.ready?'Joueur connecté ! Choisis ton personnage :':'Donne ce code à l\'autre joueur… en attente',W/2,net.ready?175:340,24,'#ffd700');
-    if(net.ready)CH.forEach((c,i)=>{const r=cardR(i);rbox(r,'rgba(30,30,55,.9)','#ffd700');spr(A[c.id],r.x+110,r.y+110,c.h>100?150:110,false);txt(c.nom,r.x+110,r.y+220,30,'#fff');txt(c.cap,r.x+110,r.y+256,22,'#ffd700')});
+    if(net.ready)CH.forEach((c,i)=>{const r=cardR(i);rbox(r,'rgba(30,30,55,.9)','#ffd700');spr(A[c.id],r.x+110,r.y+110,150,false);txt(c.nom,r.x+110,r.y+220,30,'#fff');txt(c.cap,r.x+110,r.y+256,22,'#ffd700')});
   }else txt(net.msg,W/2,300,30,'#fff');
   if(net.msg&&net.role!=='guest')txt(net.msg,W/2,580,22,'#ff8080');
   rbox(backR,'#32324a');txt(net.role?'Annuler':'Retour',W/2,backR.y+25,24,'#fff');
@@ -280,11 +281,11 @@ function drawRace(){
   for(const o of[r,p]){
     const im=o===p?A[G.ch.id]:A.drago,fl=o===p?p.face*G.ch.nat<0:r.face<0;
     if(o.boost>0){g.fillStyle='rgba(255,215,0,.25)';g.beginPath();g.arc(o.x-40,o.y,o.h*.45,0,7);g.fill()}
-    spr(im,o.x,o.y,o.h,fl,o.inv>0?.5+.4*Math.sin(G.el*30):1);
-    if(o.shield>0){g.beginPath();g.arc(o.x,o.y,o.h*.7,0,7);g.strokeStyle='rgba(120,200,255,.9)';g.lineWidth=5;g.stroke()}
-    if(o.stun>0)txt('★ ★ ★',o.x,o.y-o.h*.6,22,'#ffd700')}
-  if(G.frz>0){g.strokeStyle='rgba(170,230,255,.95)';g.lineWidth=4;g.beginPath();g.arc(r.x,r.y,r.h*.5,0,7);g.stroke();txt('PETRIFICUS TOTALUS !',W/2,130,40,'#9fe0ff')}
-  txt('▼',p.x,p.y-p.h*.62,22,'#fff');txt('Drago',r.x,r.y-r.h*.62,20,'#ff6060');
+    spr(im,o.x,o.y,o.h*VS,fl,o.inv>0?.5+.4*Math.sin(G.el*30):1);
+    if(o.shield>0){g.beginPath();g.arc(o.x,o.y,o.h*1.0,0,7);g.strokeStyle='rgba(120,200,255,.9)';g.lineWidth=5;g.stroke()}
+    if(o.stun>0)txt('★ ★ ★',o.x,o.y-o.h*.85,22,'#ffd700')}
+  if(G.frz>0){g.strokeStyle='rgba(170,230,255,.95)';g.lineWidth=4;g.beginPath();g.arc(r.x,r.y,r.h*.75,0,7);g.stroke();txt('PETRIFICUS TOTALUS !',W/2,130,40,'#9fe0ff')}
+  txt('▼',p.x,p.y-p.h*.88,22,'#fff');txt('Drago',r.x,r.y-r.h*.88,20,'#ff6060');
   for(const q of G.parts){g.globalAlpha=Math.max(0,q.l);g.fillStyle='#ffe96a';g.fillRect(q.x,q.y,4,4)}g.globalAlpha=1;
   txt(`${G.el.toFixed(1)} s`,30,45,34,'#ffd700','left');txt('♥'.repeat(Math.max(0,G.lives)),30,88,34,'#ff5050','left');
   txt(G.sn?'ATTRAPE LE VIF D\'OR !':`Vif d'or dans ${Math.max(0,GOAL-G.dist)|0} m`,W/2,45,32,G.sn?'#ffd700':'#fff');
@@ -310,7 +311,7 @@ function drawRMenu(){
   txt('Sous les tribunes : pousse Drago dans les poutres et les cognards, puis attrape le Vif d\'or !',W/2,115,22,'#fff');
   txt(`Le Vif apparaît après ${GOAL} m • 3 vies : ramasse les ♥ pour en regagner`,W/2,148,20,'#ccc');
   const b=rbest();txt('Record : '+(b.time?b.time.toFixed(1)+' s':'—'),W/2,180,20,'#ffd700');
-  CH.forEach((c,i)=>{const r=cardR(i);rbox(r,'rgba(30,30,55,.9)','#ffd700');spr(A[c.id],r.x+110,r.y+110,c.h>100?150:110,false);txt(c.nom,r.x+110,r.y+220,30,'#fff');txt(c.cap,r.x+110,r.y+256,22,'#ffd700')});
+  CH.forEach((c,i)=>{const r=cardR(i);rbox(r,'rgba(30,30,55,.9)','#ffd700');spr(A[c.id],r.x+110,r.y+110,150,false);txt(c.nom,r.x+110,r.y+220,30,'#fff');txt(c.cap,r.x+110,r.y+256,22,'#ffd700')});
   difs();rbox(backR,'#32324a');txt('Retour',W/2,backR.y+25,24,'#fff');
 }
 function rmenuClick(m){
@@ -350,7 +351,7 @@ function bg(px=W/2,py=H/2,dark=0){
 function rbox(r,fill,stroke){g.beginPath();g.roundRect(r.x,r.y,r.w,r.h,12);g.fillStyle=fill;g.fill();if(stroke){g.strokeStyle=stroke;g.lineWidth=3;g.stroke()}}
 
 function cards(){CH.forEach((c,i)=>{const r=cardR(i);rbox(r,'rgba(30,30,55,.9)','#ffd700');
-  spr(A[c.id],r.x+110,r.y+95,c.h>100?150:110,false);
+  spr(A[c.id],r.x+110,r.y+95,150,false);
   txt(c.nom,r.x+110,r.y+190,30,'#fff');txt(c.cap,r.x+110,r.y+226,22,'#ffd700');txt(c.desc,r.x+110,r.y+256,15,'#ccc')})}
 function difs(){txt('Difficulté',W/2,515,24,'#fff');DIF.forEach((d,i)=>{const r=difR(i);rbox(r,i===diff?'#ffd700':'#32324a');txt(d.n,r.x+80,r.y+26,24,i===diff?'#0a0a14':'#fff')})}
 function tile(i,title,sub,col){const r=homeR(i);rbox(r,'rgba(20,20,40,.88)',col);
@@ -393,7 +394,7 @@ function drawSMenu(){
   txt('Fuis les araignées d\'Aragog… puis échappe-toi de l\'araignée géante !',W/2,115,22,'#fff');
   txt(`Parcours ${GOAL2} m, puis survis ${BOSS_T} s • 3 vies : ramasse les ♥ pour en regagner`,W/2,148,20,'#ccc');
   const b=rbest();txt('Record : '+(b.sp?b.sp.toFixed(1)+' s':'—'),W/2,180,20,'#ffd700');
-  CH.forEach((c,i)=>{const r=cardR(i);rbox(r,'rgba(30,30,55,.9)','#b04aff');spr(A[c.id],r.x+110,r.y+110,c.h>100?150:110,false);txt(c.nom,r.x+110,r.y+220,30,'#fff');txt(c.cap,r.x+110,r.y+256,22,'#ffd700')});
+  CH.forEach((c,i)=>{const r=cardR(i);rbox(r,'rgba(30,30,55,.9)','#b04aff');spr(A[c.id],r.x+110,r.y+110,150,false);txt(c.nom,r.x+110,r.y+220,30,'#fff');txt(c.cap,r.x+110,r.y+256,22,'#ffd700')});
   difs();rbox(backR,'#32324a');txt('Retour',W/2,backR.y+25,24,'#fff');
 }
 function smenuClick(m){
@@ -537,9 +538,9 @@ function drawSpiderGame(){
     else if(o.t==='g')bug(o.x,o.y,o.r,G.el*1.5+o.ph);
     else heart(o.x,o.y,o.r)}
   if(p.boost>0){g.fillStyle='rgba(255,215,0,.25)';g.beginPath();g.arc(p.x-40,p.y,p.h*.45,0,7);g.fill()}
-  spr(A[G.ch.id],p.x,p.y,p.h,p.face*G.ch.nat<0,p.inv>0?.5+.4*Math.sin(G.el*30):1);
-  if(p.shield>0){g.beginPath();g.arc(p.x,p.y,p.h*.7,0,7);g.strokeStyle='rgba(120,200,255,.9)';g.lineWidth=5;g.stroke()}
-  if(G.web>0){g.beginPath();g.arc(p.x,p.y,p.h*.6,0,7);g.strokeStyle='rgba(255,255,255,.8)';g.lineWidth=3;g.setLineDash([6,6]);g.stroke();g.setLineDash([])}
+  spr(A[G.ch.id],p.x,p.y,p.h*VS,p.face*G.ch.nat<0,p.inv>0?.5+.4*Math.sin(G.el*30):1);
+  if(p.shield>0){g.beginPath();g.arc(p.x,p.y,p.h*1.0,0,7);g.strokeStyle='rgba(120,200,255,.9)';g.lineWidth=5;g.stroke()}
+  if(G.web>0){g.beginPath();g.arc(p.x,p.y,p.h*.85,0,7);g.strokeStyle='rgba(255,255,255,.8)';g.lineWidth=3;g.setLineDash([6,6]);g.stroke();g.setLineDash([])}
   for(const q of G.parts){g.globalAlpha=Math.max(0,q.l);g.fillStyle='#ffe96a';g.fillRect(q.x,q.y,4,4)}g.globalAlpha=1;
   g.restore();
   if(warn){txt('L\'ARAIGNÉE GÉANTE !',W/2,250,70,'#ff4040');txt('COURS !',W/2,335,50,'#fff')}
@@ -576,9 +577,9 @@ function drawMatch(){
   for(const o of[p,r]){
     const im=o===p?A[ch.id]:A.drago,fl=o.face*(o===p?ch.nat:1)<0;
     if(o.boost>0||o.dash>0){g.fillStyle='rgba(255,215,0,.25)';g.beginPath();g.arc(o.x-o.face*30,o.y,o.h*.4,0,7);g.fill()}
-    spr(im,o.x,o.y,o.h,fl,o.stun>0?.5+.4*Math.sin(G.el*30):1);
-    if(o.shield>0){g.beginPath();g.arc(o.x,o.y,o.h*.7,0,7);g.strokeStyle='rgba(120,200,255,.9)';g.lineWidth=5;g.stroke();g.fillStyle='rgba(120,200,255,.2)';g.fill()}
-    if(o.stun>0)txt('★ ★ ★',o.x,o.y-o.h*.6,22,'#ffd700')}
+    spr(im,o.x,o.y,o.h*VS,fl,o.stun>0?.5+.4*Math.sin(G.el*30):1);
+    if(o.shield>0){g.beginPath();g.arc(o.x,o.y,o.h*1.0,0,7);g.strokeStyle='rgba(120,200,255,.9)';g.lineWidth=5;g.stroke();g.fillStyle='rgba(120,200,255,.2)';g.fill()}
+    if(o.stun>0)txt('★ ★ ★',o.x,o.y-o.h*.85,22,'#ffd700')}
   g.save();g.shadowColor='#ffd700';g.shadowBlur=22;
   spr(A.vif,s.x,s.y,50,false,s.fade>0?.4+.3*Math.sin(G.el*40):1,1+.15*Math.sin(G.el*45));g.restore();
   for(const q of G.parts){g.globalAlpha=Math.max(0,q.l);g.fillStyle='#ffe96a';g.fillRect(q.x,q.y,4,4)}
