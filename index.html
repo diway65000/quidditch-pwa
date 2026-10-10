@@ -38,11 +38,7 @@ body.swap{flex-direction:row-reverse}
 <script src="peerjs.min.js"></script>
 <script src="game.js"></script>
 <script>
-if('serviceWorker' in navigator){
- const had=!!navigator.serviceWorker.controller;let rl=false;
- navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!rl){rl=true;location.reload()}});
- addEventListener('load',()=>navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}));
-}
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js'));
 </script>
 </body>
 </html>

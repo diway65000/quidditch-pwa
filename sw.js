@@ -1,5 +1,5 @@
-const C='quidditch-v8';
-const F=['./','index.html','game.js','peerjs.min.js','manifest.json',...['stade.png','vif_or.png','harry.png','drago.png','hermione.png','elise.png','musique_magie.mp3','attrape.wav','collision.wav','icon-192.png','icon-512.png'].map(f=>'assets/'+f)];
+const C='quidditch-v9';
+const F=['./','index.html','game.js','peerjs.min.js','manifest.json',...['stade.png','vif_or.png','harry.png','drago.png','hermione.png','elise.png','foret.jpg','musique_magie.mp3','attrape.wav','collision.wav','icon-192.png','icon-512.png'].map(f=>'assets/'+f)];
 // Précharge tolérante : un fichier manquant n'empêche plus l'installation
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>Promise.all(F.map(f=>c.add(f).catch(()=>{})))));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))));self.clients.claim()});

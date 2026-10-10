@@ -1,7 +1,7 @@
 'use strict';
 const cv=document.getElementById('c'),g=cv.getContext('2d'),W=1280,H=720;
 const A={},keys={};
-const FILES={fond:'stade.png',vif:'vif_or.png',harry:'harry.png',drago:'drago.png',hermione:'hermione.png',elise:'elise.png'};
+const FILES={fond:'stade.png',vif:'vif_or.png',harry:'harry.png',drago:'drago.png',hermione:'hermione.png',elise:'elise.png',foret:'foret.jpg'};
 const CH=[
  {id:'harry',nom:'Harry',vit:8,h:90,cap:'Turbo',desc:'Vitesse x1.6 (2 s)',nat:1},
  {id:'hermione',nom:'Hermione',vit:7,h:90,cap:'Bouclier',desc:'Immunité cognards (3 s)',nat:1},
@@ -384,7 +384,7 @@ function backToMenu(){const m=G&&G.mode;leave();state=m==='race'?'rmenu':m==='sp
 /* ---------- MODE FORÊT INTERDITE ---------- */
 const hash=(i,L)=>{const x=Math.sin(i*127.1+L*311.7)*43758.5;return x-Math.floor(x)};
 function drawSMenu(){
-  bg(W/2,H/2,.75);txt('LA FORÊT INTERDITE',W/2,50,44,'#b04aff');
+  forest(0);g.fillStyle='rgba(0,0,10,.55)';g.fillRect(0,0,W,H);txt('LA FORÊT INTERDITE',W/2,50,44,'#b04aff');
   txt('Fuis les araignées d\'Aragog… puis échappe-toi de l\'araignée géante !',W/2,115,22,'#fff');
   txt(`Parcours ${GOAL2} m, puis survis ${BOSS_T} s : esquive ses crachats et ses assauts • 3 vies`,W/2,148,20,'#ccc');
   const b=rbest();txt('Record : '+(b.sp?b.sp.toFixed(1)+' s':'—'),W/2,180,20,'#ffd700');
@@ -484,6 +484,14 @@ function boss(t){
   g.restore();
 }
 function forest(sc){
+  const im=A.foret;
+  if(im&&im.width){
+    const tw=H*im.width/im.height,off=sc*.4,n=Math.floor(off/tw);
+    for(let i=n;i*tw-off<W;i++){const x=i*tw-off;g.save();
+      if(i%2){g.translate(x+tw,0);g.scale(-1,1)}else g.translate(x,0);
+      g.drawImage(im,0,0,tw,H);g.restore()}
+    g.fillStyle='rgba(0,0,10,.15)';g.fillRect(0,0,W,H);
+    return}
   const gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,'#03070a');gr.addColorStop(.65,'#0a1a12');gr.addColorStop(1,'#040704');
   g.fillStyle=gr;g.fillRect(0,0,W,H);
   g.fillStyle='rgba(190,225,205,.1)';g.beginPath();g.arc(1010,130,100,0,7);g.fill();g.beginPath();g.arc(1010,130,60,0,7);g.fill();
