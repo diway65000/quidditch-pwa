@@ -1,7 +1,7 @@
 'use strict';
 const cv=document.getElementById('c'),g=cv.getContext('2d'),W=1280,H=720;
 const A={},keys={};
-const FILES={fond:'stade.png',vif:'vif_or.png',harry:'harry.png',drago:'drago.png',hermione:'hermione.png',elise:'elise.png',foret:'foret.jpg',tribune:'tribune.jpg'};
+const FILES={fond:'stade.jpg',vif:'vif_or.png',harry:'harry.png',drago:'drago.png',hermione:'hermione.png',elise:'elise.png',foret:'foret.jpg',tribune:'tribune.jpg'};
 const VS=130/90; // taille d'affichage commune à tous les personnages (la hitbox reste h)
 const CH=[
  {id:'harry',nom:'Harry',vit:8,h:90,cap:'Turbo',desc:'Vitesse x1.6 (2 s)',nat:1},
@@ -31,15 +31,19 @@ const net={role:null,conn:null,peer:null,code:'',msg:'',ready:false,inp:{ax:0,ay
 const loadImg=u=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(i);i.src='assets/'+u});
 async function aud(u){const b=await(await fetch('assets/'+u)).blob();return new Audio(URL.createObjectURL(b))}
 async function boot(){
-  draw();
-  for(const k in FILES)A[k]=await loadImg(FILES[k]);
-  try{music=await aud('musique_magie.mp3');music.loop=true;music.volume=.4;
-      S.attrape=await aud('attrape.wav');S.collision=await aud('collision.wav')}catch(e){}
+  g.fillStyle='#0a0a14';g.fillRect(0,0,W,H);txt('Chargement…',W/2,H/2,44,'#ffd700');
+  // images en parallèle : le menu s'affiche dès qu'elles sont là
+  await Promise.all(Object.keys(FILES).map(async k=>{A[k]=await loadImg(FILES[k])}));
   requestAnimationFrame(loop);
+  // sons chargés en arrière-plan, sans bloquer le démarrage
+  aud('musique_magie.mp3').then(a=>{music=a;music.loop=true;music.volume=.4;music.muted=muted;if(wantMusic)startMusic()}).catch(()=>{});
+  aud('attrape.mp3').then(a=>S.attrape=a).catch(()=>{});
+  aud('collision.wav').then(a=>S.collision=a).catch(()=>{});
 }
 const sfx=n=>{if(muted||!S[n])return;const a=S[n].cloneNode();a.volume=.8;a.play().catch(()=>{})};
 function setMute(m){muted=m;if(music)music.muted=m}
-function startMusic(){if(!musicOn&&music){musicOn=true;music.play().catch(()=>musicOn=false)}}
+let wantMusic=false;
+function startMusic(){wantMusic=true;if(!musicOn&&music){musicOn=true;music.play().catch(()=>musicOn=false)}}
 
 /* ---------- scores ---------- */
 const hist=()=>{try{return JSON.parse(localStorage.getItem('quid_hist'))||[]}catch(e){return[]}};
