@@ -7,7 +7,7 @@ const CH=[
  {id:'harry',nom:'Harry',vit:8,h:90,cap:'Turbo',desc:'Vitesse x1.6 (2 s)',nat:1},
  {id:'hermione',nom:'Hermione',vit:7,h:90,cap:'Bouclier',desc:'Immunité cognards (3 s)',nat:1},
  {id:'elise',nom:'Elise',vit:9,h:90,cap:'Petrificus',desc:'Fige rival + cognards (2 s)',nat:1}];
-const DIF=[{n:'Facile',v:4.2,err:170,bl:2,sn:.8},{n:'Normal',v:5.6,err:90,bl:2,sn:1},{n:'Difficile',v:7,err:35,bl:3,sn:1.2}];
+const DIF=[{n:'Facile',v:4.7,err:140,bl:2,sn:.8},{n:'Normal',v:6.2,err:70,bl:2,sn:1},{n:'Difficile',v:7.4,err:30,bl:3,sn:1.2}];
 const MENUS=['menu','qmenu','smenu','rmenu','board','lobby'];
 let diff=1,state='menu',G=null,last=0,muted=false,musicOn=false,touch=null,music,S={};
 const rand=(a,b)=>a+Math.random()*(b-a),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -95,7 +95,7 @@ function update(dt){
   /* Drago */
   if(fz){}else if(net.role==='host'){const i=net.inp,v=6.5*(r.stun>0?.3:1)*(r.dash>0?3:1);
     r.x=Math.min(W-40,Math.max(40,r.x+i.ax*v*k));r.y=Math.min(H-40,Math.max(40,r.y+i.ay*v*k));if(i.ax)r.face=i.ax>0?1:-1}else{
-  r.nt-=dt;if(r.nt<=0){r.nt=.5;r.tx=s.x+rand(-d.err,d.err);r.ty=s.y+rand(-d.err,d.err)}
+  r.nt-=dt;if(r.nt<=0){r.nt=.25;r.tx=s.x+Math.cos(s.ang)*55+rand(-d.err,d.err)*.8;r.ty=s.y+Math.sin(s.ang)*55+rand(-d.err,d.err)*.8}
   {const dx=r.tx-r.x,dy=r.ty-r.y,l=Math.hypot(dx,dy)||1,v=d.v*(r.stun>0?.3:1)*Math.min(1,l/20);
    r.x+=dx/l*v*k;r.y+=dy/l*v*k;if(Math.abs(dx)>4)r.face=dx>0?1:-1}}
   const dd=dist(p,r),min=(p.h+r.h)*.35;
@@ -202,11 +202,11 @@ const rbest=()=>{try{return JSON.parse(localStorage.getItem('quid_race'))||{}}ca
 function newRace(c){
   needName();
   const mk=(x,y,h)=>({x,y,h,face:1,stun:0,inv:0,boost:0,shield:0,dash:0,cd:0,score:0,vx:0,vy:0,kx:0,ky:0});
-  G={mode:'race',rm:1,ch:c,d:DIF[diff],cnt:3.99,el:0,dist:0,scroll:0,spawn:1.2,obs:[],parts:[],ev:[],me:'p',frz:0,cc:0,rec:rbest(),win:null,sn:null,sw:0,lives:3,out:false,
-     p:mk(250,300,c.h),r:Object.assign(mk(250,440,90),{tx:600,ty:360,mode:0,mt:2,nt:0,ex:0,ey:0})};
+  G={mode:'race',rm:1,ch:c,d:DIF[diff],cnt:3.99,el:0,dist:0,scroll:0,spawn:1.2,obs:[],parts:[],ev:[],me:'p',frz:0,cc:0,rec:rbest(),win:null,sn:null,sw:0,lives:3,out:false,dm:0,
+     p:mk(250,300,c.h),r:Object.assign(mk(250,440,90),{tx:600,ty:360,mode:0,mt:2,nt:0,ex:0,ey:0,lives:3,out:false})};
   state='count';
 }
-function crashR(o){fx('c');o.inv=2;o.stun=.6;o.x=cl(o.x-80,40,W-40);o.kx=0;o.ky=0;if(o===G.p&&--G.lives<=0){G.out=true;endRace('r')}}
+function crashR(o){fx('c');o.inv=2;o.stun=.6;o.x=cl(o.x-80,40,W-40);o.kx=0;o.ky=0;if(o===G.p){if(--G.lives<=0){G.out=true;endRace('r')}}else if(--o.lives<=0){o.out=true;G.dm=2.5;for(let i=0;i<24;i++)G.parts.push({x:o.x,y:o.y,vx:rand(-7,7),vy:rand(-7,7),l:.9})}}
 function endRace(w){
   G.win=w;
   if(w==='p'){try{const b=rbest();b.time=Math.min(b.time||1e9,G.el);localStorage.setItem('quid_race',JSON.stringify(b));
@@ -214,7 +214,7 @@ function endRace(w){
   G.rec=rbest();state='result';G.endT=0;
 }
 function updateRace(dt){
-  const k=dt*60,{p,r,d}=G;G.el+=dt;G.cc-=dt;if(G.frz>0)G.frz-=dt;
+  const k=dt*60,{p,r,d}=G;G.el+=dt;G.cc-=dt;if(G.frz>0)G.frz-=dt;if(G.dm>0)G.dm-=dt;
   for(const o of[p,r])for(const f of['stun','inv','boost','shield','cd'])if(o[f]>0)o[f]-=dt;
   const dc=Math.pow(.9,k);
   /* joueur */
@@ -224,18 +224,19 @@ function updateRace(dt){
   const rv=Math.min(900,450+G.el*8);G.scroll+=rv*dt;G.dist=G.scroll/40;
   if(!G.sn&&G.dist>=GOAL){G.sn={x:W-80,y:rand(200,H-200),ang:Math.PI,fade:1}}
   if(!G.sn&&(G.spawn-=dt)<=0){G.spawn=Math.max(.5,1.2-G.el*.008)/d.sn;const ig=Math.random()<[.35,.15,.03][diff];
-    if(Math.random()<.12&&G.lives<3)G.obs.push({t:'l',x:W+30,y:rand(100,H-100),r:24});
+    if(Math.random()<.14&&(G.lives<3||(!r.out&&r.lives<3)))G.obs.push({t:'l',x:W+30,y:rand(100,H-100),r:24});
     else G.obs.push(Math.random()<.5?{t:'b',x:W+30,y:0,y0:rand(80,H-80),r:20,ph:rand(0,6),amp:rand(0,90),ig}:{t:'p',x:W+40,w:70,h:rand(150,300),top:Math.random()<.5,ig})}
   for(const o of G.obs){o.x-=(rv+(o.t==='b'?120:0))*dt;if(o.t==='b')o.y=cl(o.y0+Math.sin(G.el*3+o.ph)*o.amp,20,H-20)}
   G.obs=G.obs.filter(o=>o.x>-120);
   /* Drago (IA) */
-  if(G.frz>0){r.vx=r.vy=0}else{
+  if(r.out||G.frz>0){r.vx=r.vy=0}else{
     const ag=[.3,.6,1][diff];
     if((r.mt-=dt)<=0){r.mt=rand(2,4);r.mode=Math.random()<ag*.7?1:0}
     let tx,ty;
-    if(G.sn){if((r.nt-=dt)<=0){r.nt=.5;r.ex=rand(-d.err,d.err);r.ey=rand(-d.err,d.err)}tx=G.sn.x+r.ex;ty=G.sn.y+r.ey}
+    if(G.sn){if((r.nt-=dt)<=0){r.nt=.3;r.ex=rand(-d.err,d.err)*.8;r.ey=rand(-d.err,d.err)*.8}tx=G.sn.x+Math.cos(G.sn.ang)*50+r.ex;ty=G.sn.y+Math.sin(G.sn.ang)*50+r.ey}
     else if(r.mode&&Math.abs(p.x-r.x)<520){tx=p.x;ty=p.y}
     else{tx=cl(p.x+160,400,W-100);ty=H/2+Math.sin(G.el)*120}
+    if(r.lives<3&&!G.sn){let hb=null;for(const o of G.obs)if(o.t==='l'&&o.x>r.x-20&&o.x<r.x+450&&(!hb||o.x<hb.x))hb=o;if(hb){tx=hb.x;ty=hb.y}}
     for(const o of G.obs){if(o.t==='l'||o.ig||o.x<r.x-30||o.x>r.x+130+d.v*20)continue;
       if(o.t==='p'){if(o.top?r.y<o.h+70:r.y>H-o.h-70){ty=o.top?o.h+110:H-o.h-110}}
       else if(Math.abs(r.y-o.y)<70)ty=o.y+(r.y>=o.y?1:-1)*110}
@@ -244,7 +245,7 @@ function updateRace(dt){
     r.vx=dx/l*v;r.vy=dy/l*v;if(Math.abs(dx)>4)r.face=dx>0?1:-1}
   /* poussées entre joueurs */
   const dd=dist(p,r),mn=(p.h+r.h)*.33;
-  if(dd<mn){const nx=(p.x-r.x)/(dd||1),ny=(p.y-r.y)/(dd||1);
+  if(!r.out&&dd<mn){const nx=(p.x-r.x)/(dd||1),ny=(p.y-r.y)/(dd||1);
     const ap=Math.max(0,-(p.vx*nx+p.vy*ny)),ar=Math.max(0,r.vx*nx+r.vy*ny);
     r.kx-=nx*(5+ap*1.6);r.ky-=ny*(5+ap*1.6);p.kx+=nx*(5+ar*1.6);p.ky+=ny*(5+ar*1.6);
     if(G.cc<=0){fx('c');G.cc=.5}}
@@ -252,21 +253,21 @@ function updateRace(dt){
     o.x=cl(o.x+(o.vx+o.kx)*k,40,W-40);o.y=cl(o.y+(o.vy+o.ky)*k,40,H-40);o.kx*=dc;o.ky*=dc}
   /* chocs contre les obstacles (joueur ET Drago) */
   for(const o of G.obs.slice()){
-    if(o.t==='l'){if(dist(p,o)<p.h*.4+o.r){G.lives=Math.min(3,G.lives+1);fx('a',o.x,o.y);G.obs.splice(G.obs.indexOf(o),1)}continue}
+    if(o.t==='l'){if(G.lives<3&&dist(p,o)<p.h*.4+o.r){G.lives++;fx('a',o.x,o.y);G.obs.splice(G.obs.indexOf(o),1)}else if(!r.out&&r.lives<3&&dist(r,o)<r.h*.4+o.r){r.lives++;fx('a',o.x,o.y);G.obs.splice(G.obs.indexOf(o),1)}continue}
     for(const q of[p,r]){
-      if(q.inv>0||(q===p&&p.shield>0))continue;
+      if(q.out||q.inv>0||(q===p&&p.shield>0))continue;
       const h=o.t==='b'?dist(q,o)<q.h*.33+o.r:Math.abs(q.x-o.x)<o.w/2+q.h*.28&&(o.top?q.y<o.h+q.h*.28:q.y>H-o.h-q.h*.28);
       if(h){crashR(q);if(state!=='play')return}}}
   /* Vif d'or */
   if(G.sn){const s=G.sn;G.sw+=dt;
     s.ang+=(Math.random()-.5)*.25*k;if(Math.random()<.012*k)s.ang+=(Math.random()<.5?-1:1)*1.2;
-    for(const o of[p,r]){const dx=s.x-o.x,dy=s.y-o.y;
+    for(const o of[p,r]){if(o.out)continue;const dx=s.x-o.x,dy=s.y-o.y;
       if(Math.hypot(dx,dy)<230){let df=Math.atan2(dy,dx)-s.ang;df=Math.atan2(Math.sin(df),Math.cos(df));s.ang+=df*.12*k}}
     const ss=(5+G.sw*.1)*d.sn*(s.fade>0?.5:1);
     s.x+=Math.cos(s.ang)*ss*k;s.y+=Math.sin(s.ang)*ss*k;if(s.fade>0)s.fade-=dt;
     if(s.x<40){s.x=40;s.ang=Math.PI-s.ang}if(s.x>W-40){s.x=W-40;s.ang=Math.PI-s.ang}
     if(s.y<40){s.y=40;s.ang=-s.ang}if(s.y>H-40){s.y=H-40;s.ang=-s.ang}
-    if(s.fade<=0)for(const o of[p,r]){const rad=o.h*.4+10+(o===p&&G.ch.id==='harry'?15:0);
+    if(s.fade<=0)for(const o of[p,r]){if(o.out)continue;const rad=o.h*.4+10+(o===p&&G.ch.id==='harry'?15:0);
       if(dist(o,s)<rad){fx('a',s.x,s.y);endRace(o===p?'p':'r');return}}
     if(G.sw>=25){endRace(null);return}}
   for(const q of G.parts){q.x+=q.vx*k;q.y+=q.vy*k;q.l-=dt}G.parts=G.parts.filter(q=>q.l>0);
@@ -283,17 +284,20 @@ function drawRace(){
   if(G.sn){const s=G.sn;g.save();g.shadowColor='#ffd700';g.shadowBlur=22;
     spr(A.vif,s.x,s.y,50,false,s.fade>0?.4+.3*Math.sin(G.el*40):1,1+.15*Math.sin(G.el*45));g.restore()}
   for(const o of[r,p]){
+    if(o.out)continue;
     const im=o===p?A[G.ch.id]:A.drago,fl=o===p?p.face*G.ch.nat<0:r.face<0;
     if(o.boost>0){g.fillStyle='rgba(255,215,0,.25)';g.beginPath();g.arc(o.x-40,o.y,o.h*.45,0,7);g.fill()}
     spr(im,o.x,o.y,o.h*VS,fl,o.inv>0?.5+.4*Math.sin(G.el*30):1);
     if(o.shield>0){g.beginPath();g.arc(o.x,o.y,o.h*1.0,0,7);g.strokeStyle='rgba(120,200,255,.9)';g.lineWidth=5;g.stroke()}
     if(o.stun>0)txt('★ ★ ★',o.x,o.y-o.h*.85,22,'#ffd700')}
   if(G.frz>0){g.strokeStyle='rgba(170,230,255,.95)';g.lineWidth=4;g.beginPath();g.arc(r.x,r.y,r.h*.75,0,7);g.stroke();txt('PETRIFICUS TOTALUS !',W/2,130,40,'#9fe0ff')}
-  txt('▼',p.x,p.y-p.h*.88,22,'#fff');txt('Drago',r.x,r.y-r.h*.88,20,'#ff6060');
+  txt('▼',p.x,p.y-p.h*.88,22,'#fff');if(!r.out)txt('Drago',r.x,r.y-r.h*.88,20,'#ff6060');
   for(const q of G.parts){g.globalAlpha=Math.max(0,q.l);g.fillStyle='#ffe96a';g.fillRect(q.x,q.y,4,4)}g.globalAlpha=1;
   txt(`${G.el.toFixed(1)} s`,30,45,34,'#ffd700','left');txt('♥'.repeat(Math.max(0,G.lives)),30,88,34,'#ff5050','left');
   txt(G.sn?'ATTRAPE LE VIF D\'OR !':`Vif d'or dans ${Math.max(0,GOAL-G.dist)|0} m`,W/2,45,32,G.sn?'#ffd700':'#fff');
   txt(`Record ${G.rec.time?G.rec.time.toFixed(1)+' s':'—'}`,W-30,45,24,'#ccc','right');
+  txt(r.out?'Drago éliminé':'Drago '+'♥'.repeat(Math.max(0,r.lives)),W-30,88,26,'#ff6060','right');
+  if(G.dm>0)txt('DRAGO EST ÉLIMINÉ !',W/2,160,52,'#ffd700');
   g.fillStyle='rgba(0,0,0,.5)';g.fillRect(200,H-24,W-400,10);g.fillStyle='#80ff78';g.fillRect(200,H-24,(W-400)*Math.min(1,G.dist/GOAL),10);
   rbox(pauseR,'rgba(0,0,0,.5)');txt('II',pauseR.x+Z/2,pauseR.y+Z/2,Z/2,'#fff');
   rbox(muteR,'rgba(0,0,0,.5)');txt(muted?'🔇':'🔊',muteR.x+Z/2,muteR.y+Z/2,Z/2,'#fff');
@@ -313,7 +317,7 @@ function drawRaceResult(){
 function drawRMenu(){
   bg(W/2,H/2,.7);txt('COURSE CONTRE DRAGO',W/2,50,44,'#ffd700');
   txt('Sous les tribunes : pousse Drago dans les poutres et les cognards, puis attrape le Vif d\'or !',W/2,115,22,'#fff');
-  txt(`Le Vif apparaît après ${GOAL} m • 3 vies : ramasse les ♥ pour en regagner`,W/2,148,20,'#ccc');
+  txt(`Le Vif apparaît après ${GOAL} m • 3 vies chacun : ramasse les ♥ pour en regagner`,W/2,148,20,'#ccc');
   const b=rbest();txt('Record : '+(b.time?b.time.toFixed(1)+' s':'—'),W/2,180,20,'#ffd700');
   CH.forEach((c,i)=>{const r=cardR(i);rbox(r,'rgba(30,30,55,.9)','#ffd700');spr(A[c.id],r.x+110,r.y+110,150,false);txt(c.nom,r.x+110,r.y+220,30,'#fff');txt(c.cap,r.x+110,r.y+256,22,'#ffd700')});
   difs();rbox(backR,'#32324a');txt('Retour',W/2,backR.y+25,24,'#fff');
@@ -360,8 +364,9 @@ function cards(){CH.forEach((c,i)=>{const r=cardR(i);rbox(r,'rgba(30,30,55,.9)',
 function difs(){txt('Difficulté',W/2,515,24,'#fff');DIF.forEach((d,i)=>{const r=difR(i);rbox(r,i===diff?'#ffd700':'#32324a');txt(d.n,r.x+80,r.y+26,24,i===diff?'#0a0a14':'#fff')})}
 function tile(i,title,sub,col){const r=homeR(i);rbox(r,'rgba(20,20,40,.88)',col);
   txt(title,r.x+r.w/2,r.y+225,32,col);sub.forEach((t,j)=>txt(t,r.x+r.w/2,r.y+272+j*28,20,'#ddd'));return r}
+const VERSION='v12';
 function drawMenu(){
-  bg(W/2,H/2,.6);
+  bg(W/2,H/2,.6);txt(VERSION,24,H-16,16,'#9a9ab0','left');
   txt('QUIDDITCH CHAMPIONSHIP',W/2,90,64,'#ffd700');
   txt('Choisis ton aventure',W/2,150,28,'#fff');
   let r=tile(0,'Match de Quidditch',['Attrape le Vif d\'or face à Drago','Jeu en ligne à 2'],'#ffd700');
