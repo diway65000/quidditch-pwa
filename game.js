@@ -7,7 +7,7 @@ const CH=[
  {id:'harry',nom:'Harry',vit:8,h:90,cap:'Turbo',desc:'Vitesse x1.6 (2 s)',nat:1},
  {id:'hermione',nom:'Hermione',vit:7,h:90,cap:'Bouclier',desc:'Immunité cognards (3 s)',nat:1},
  {id:'elise',nom:'Elise',vit:9,h:90,cap:'Petrificus',desc:'Fige rival + cognards (2 s)',nat:1}];
-const DIF=[{n:'Facile',v:4.7,err:140,bl:2,sn:.8},{n:'Normal',v:6.2,err:70,bl:2,sn:1},{n:'Difficile',v:7.4,err:30,bl:3,sn:1.2}];
+const DIF=[{n:'Facile',v:4.5,err:150,bl:2,sn:.8},{n:'Normal',v:5.6,err:90,bl:2,sn:1},{n:'Difficile',v:6.8,err:45,bl:3,sn:1.2}];
 const MENUS=['menu','qmenu','smenu','rmenu','board','lobby'];
 let diff=1,state='menu',G=null,last=0,muted=false,musicOn=false,touch=null,music,S={};
 const rand=(a,b)=>a+Math.random()*(b-a),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -95,7 +95,7 @@ function update(dt){
   /* Drago */
   if(fz){}else if(net.role==='host'){const i=net.inp,v=6.5*(r.stun>0?.3:1)*(r.dash>0?3:1);
     r.x=Math.min(W-40,Math.max(40,r.x+i.ax*v*k));r.y=Math.min(H-40,Math.max(40,r.y+i.ay*v*k));if(i.ax)r.face=i.ax>0?1:-1}else{
-  r.nt-=dt;if(r.nt<=0){r.nt=.25;r.tx=s.x+Math.cos(s.ang)*55+rand(-d.err,d.err)*.8;r.ty=s.y+Math.sin(s.ang)*55+rand(-d.err,d.err)*.8}
+  r.nt-=dt;if(r.nt<=0){r.nt=.3;r.tx=s.x+Math.cos(s.ang)*45+rand(-d.err,d.err)*.9;r.ty=s.y+Math.sin(s.ang)*45+rand(-d.err,d.err)*.9}
   {const dx=r.tx-r.x,dy=r.ty-r.y,l=Math.hypot(dx,dy)||1,v=d.v*(r.stun>0?.3:1)*Math.min(1,l/20);
    r.x+=dx/l*v*k;r.y+=dy/l*v*k;if(Math.abs(dx)>4)r.face=dx>0?1:-1}}
   const dd=dist(p,r),min=(p.h+r.h)*.35;
@@ -233,7 +233,7 @@ function updateRace(dt){
     const ag=[.3,.6,1][diff];
     if((r.mt-=dt)<=0){r.mt=rand(2,4);r.mode=Math.random()<ag*.7?1:0}
     let tx,ty;
-    if(G.sn){if((r.nt-=dt)<=0){r.nt=.3;r.ex=rand(-d.err,d.err)*.8;r.ey=rand(-d.err,d.err)*.8}tx=G.sn.x+Math.cos(G.sn.ang)*50+r.ex;ty=G.sn.y+Math.sin(G.sn.ang)*50+r.ey}
+    if(G.sn){if((r.nt-=dt)<=0){r.nt=.3;r.ex=rand(-d.err,d.err)*.9;r.ey=rand(-d.err,d.err)*.9}tx=G.sn.x+Math.cos(G.sn.ang)*40+r.ex;ty=G.sn.y+Math.sin(G.sn.ang)*40+r.ey}
     else if(r.mode&&Math.abs(p.x-r.x)<520){tx=p.x;ty=p.y}
     else{tx=cl(p.x+160,400,W-100);ty=H/2+Math.sin(G.el)*120}
     if(r.lives<3&&!G.sn){let hb=null;for(const o of G.obs)if(o.t==='l'&&o.x>r.x-20&&o.x<r.x+450&&(!hb||o.x<hb.x))hb=o;if(hb){tx=hb.x;ty=hb.y}}
@@ -364,7 +364,7 @@ function cards(){CH.forEach((c,i)=>{const r=cardR(i);rbox(r,'rgba(30,30,55,.9)',
 function difs(){txt('Difficulté',W/2,515,24,'#fff');DIF.forEach((d,i)=>{const r=difR(i);rbox(r,i===diff?'#ffd700':'#32324a');txt(d.n,r.x+80,r.y+26,24,i===diff?'#0a0a14':'#fff')})}
 function tile(i,title,sub,col){const r=homeR(i);rbox(r,'rgba(20,20,40,.88)',col);
   txt(title,r.x+r.w/2,r.y+225,32,col);sub.forEach((t,j)=>txt(t,r.x+r.w/2,r.y+272+j*28,20,'#ddd'));return r}
-const VERSION='v12';
+const VERSION='v13';
 function drawMenu(){
   bg(W/2,H/2,.6);txt(VERSION,24,H-16,16,'#9a9ab0','left');
   txt('QUIDDITCH CHAMPIONSHIP',W/2,90,64,'#ffd700');
