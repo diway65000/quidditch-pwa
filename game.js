@@ -66,6 +66,9 @@ function ability(){
   useAb(G.p,G.ch.id);
 }
 function useAb(o,id){if(o.cd>0)return;o.cd=6;if(id==='harry')o.boost=2;else if(id==='hermione')o.shield=3;else if(id==='elise'){if(G.mode==='spider'){for(const q of G.obs)if(q.t!=='l'&&q.x<W+20)burst(q.x,q.t==='p'?H/2:q.y);G.obs=G.obs.filter(q=>q.t==='l'||q.x>=W+20)}else G.frz=2;o.cd=10}else o.dash=.25}
+function pop(x,y,t,col){if(!G.pops)G.pops=[];G.pops.push({x,y,t:1,txt:t,col})}
+function popTick(dt){if(G.pops){for(const q of G.pops)q.t-=dt*.8;G.pops=G.pops.filter(q=>q.t>0)}}
+function drawPops(){if(G.pops)for(const q of G.pops){g.globalAlpha=Math.min(1,q.t*1.5);txt(q.txt,q.x,q.y-(1-q.t)*60,34,q.col)}g.globalAlpha=1}
 function burst(x,y){for(let i=0;i<30;i++){const a=rand(0,6.28),v=rand(2,9);G.parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:rand(.4,.9)})}}
 function respawn(){
   const s=G.s;s.x=Math.random()<.5?60:W-60;s.y=rand(80,H-80);
@@ -126,10 +129,10 @@ function update(dt){
     for(const o of[p,r]){
       if(!fz&&dist(o,b)<o.h*.35+18){
         const a=Math.atan2(b.y-o.y,b.x-o.x),v=Math.hypot(b.vx,b.vy);b.vx=Math.cos(a)*v;b.vy=Math.sin(a)*v;
-        if(o.inv<=0&&!(o===p&&p.shield>0)){o.stun=1.5;o.inv=2.5;fx('c')}
+        if(o.inv<=0&&!(o===p&&p.shield>0)){o.stun=1.5;o.inv=2.5;o.score-=5;pop(o.x,o.y-60,'-5','#ff5050');fx('c')}
       }}}
   for(const q of G.parts){q.x+=q.vx*k;q.y+=q.vy*k;q.l-=dt}
-  G.parts=G.parts.filter(q=>q.l>0);
+  G.parts=G.parts.filter(q=>q.l>0);popTick(dt);
 }
 
 /* ---------- réseau (PeerJS / WebRTC) ---------- */
@@ -202,15 +205,15 @@ const rbest=()=>{try{return JSON.parse(localStorage.getItem('quid_race'))||{}}ca
 function newRace(c){
   needName();
   const mk=(x,y,h)=>({x,y,h,face:1,stun:0,inv:0,boost:0,shield:0,dash:0,cd:0,score:0,vx:0,vy:0,kx:0,ky:0});
-  G={mode:'race',rm:1,ch:c,d:DIF[diff],cnt:3.99,el:0,dist:0,scroll:0,spawn:1.2,obs:[],parts:[],ev:[],me:'p',frz:0,cc:0,rec:rbest(),win:null,sn:null,sw:0,lives:3,out:false,dm:0,
+  G={mode:'race',rm:1,ch:c,d:DIF[diff],cnt:3.99,el:0,dist:0,scroll:0,spawn:1.2,obs:[],parts:[],ev:[],me:'p',frz:0,cc:0,rec:rbest(),win:null,sn:null,sw:0,lives:3,out:false,dm:0,pen:0,pops:[],
      p:mk(250,300,c.h),r:Object.assign(mk(250,440,90),{tx:600,ty:360,mode:0,mt:2,nt:0,ex:0,ey:0,lives:3,out:false})};
   state='count';
 }
-function crashR(o){fx('c');o.inv=2;o.stun=.6;o.x=cl(o.x-80,40,W-40);o.kx=0;o.ky=0;if(o===G.p){if(--G.lives<=0){G.out=true;endRace('r')}}else if(--o.lives<=0){o.out=true;G.dm=2.5;for(let i=0;i<24;i++)G.parts.push({x:o.x,y:o.y,vx:rand(-7,7),vy:rand(-7,7),l:.9})}}
+function crashR(o){fx('c');o.inv=2;o.stun=.6;o.x=cl(o.x-80,40,W-40);o.kx=0;o.ky=0;if(o===G.p){G.pen+=2;pop(o.x,o.y-60,'+2 s','#ff7070');if(--G.lives<=0){G.out=true;endRace('r')}}else if(--o.lives<=0){o.out=true;G.dm=2.5;for(let i=0;i<24;i++)G.parts.push({x:o.x,y:o.y,vx:rand(-7,7),vy:rand(-7,7),l:.9})}}
 function endRace(w){
-  G.win=w;
-  if(w==='p'){try{const b=rbest();b.time=Math.min(b.time||1e9,G.el);localStorage.setItem('quid_race',JSON.stringify(b));
-    const l=JSON.parse(localStorage.getItem('quid_rl'))||[];l.push({j:pname,rm:1,v:G.el,c:G.ch.nom});localStorage.setItem('quid_rl',JSON.stringify(l.slice(-200)))}catch(e){}}
+  G.win=w;G.tot=G.el+G.pen;
+  if(w==='p'){try{const b=rbest();b.time=Math.min(b.time||1e9,G.tot);localStorage.setItem('quid_race',JSON.stringify(b));
+    const l=JSON.parse(localStorage.getItem('quid_rl'))||[];l.push({j:pname,rm:1,v:G.tot,c:G.ch.nom});localStorage.setItem('quid_rl',JSON.stringify(l.slice(-200)))}catch(e){}}
   G.rec=rbest();state='result';G.endT=0;
 }
 function updateRace(dt){
@@ -223,7 +226,7 @@ function updateRace(dt){
   /* défilement + obstacles */
   const rv=Math.min(900,450+G.el*8);G.scroll+=rv*dt;G.dist=G.scroll/40;
   if(!G.sn&&G.dist>=GOAL){G.sn={x:W-80,y:rand(200,H-200),ang:Math.PI,fade:1}}
-  if(!G.sn&&(G.spawn-=dt)<=0){G.spawn=Math.max(.5,1.2-G.el*.008)/d.sn;const ig=Math.random()<[.35,.15,.03][diff];
+  if((G.spawn-=dt)<=0){G.spawn=Math.max(.5,1.2-G.el*.008)/d.sn*(G.sn?1.25:1);const ig=Math.random()<[.35,.15,.03][diff];
     if(Math.random()<.14&&(G.lives<3||(!r.out&&r.lives<3)))G.obs.push({t:'l',x:W+30,y:rand(100,H-100),r:24});
     else G.obs.push(Math.random()<.5?{t:'b',x:W+30,y:0,y0:rand(80,H-80),r:20,ph:rand(0,6),amp:rand(0,90),ig}:{t:'p',x:W+40,w:70,h:rand(150,300),top:Math.random()<.5,ig})}
   for(const o of G.obs){o.x-=(rv+(o.t==='b'?120:0))*dt;if(o.t==='b')o.y=cl(o.y0+Math.sin(G.el*3+o.ph)*o.amp,20,H-20)}
@@ -269,8 +272,8 @@ function updateRace(dt){
     if(s.y<40){s.y=40;s.ang=-s.ang}if(s.y>H-40){s.y=H-40;s.ang=-s.ang}
     if(s.fade<=0)for(const o of[p,r]){if(o.out)continue;const rad=o.h*.4+10+(o===p&&G.ch.id==='harry'?15:0);
       if(dist(o,s)<rad){fx('a',s.x,s.y);endRace(o===p?'p':'r');return}}
-    if(G.sw>=25){endRace(null);return}}
-  for(const q of G.parts){q.x+=q.vx*k;q.y+=q.vy*k;q.l-=dt}G.parts=G.parts.filter(q=>q.l>0);
+    if(G.sw>=30){endRace(null);return}}
+  for(const q of G.parts){q.x+=q.vx*k;q.y+=q.vy*k;q.l-=dt}G.parts=G.parts.filter(q=>q.l>0);popTick(dt);
 }
 function drawRace(){
   const{p,r}=G,sc=G.scroll*.6,n=Math.floor(sc/W),bgI=A.tribune&&A.tribune.width?A.tribune:A.fond;
@@ -290,10 +293,11 @@ function drawRace(){
     spr(im,o.x,o.y,o.h*VS,fl,o.inv>0?.5+.4*Math.sin(G.el*30):1);
     if(o.shield>0){g.beginPath();g.arc(o.x,o.y,o.h*1.0,0,7);g.strokeStyle='rgba(120,200,255,.9)';g.lineWidth=5;g.stroke()}
     if(o.stun>0)txt('★ ★ ★',o.x,o.y-o.h*.85,22,'#ffd700')}
+  drawPops();
   if(G.frz>0){g.strokeStyle='rgba(170,230,255,.95)';g.lineWidth=4;g.beginPath();g.arc(r.x,r.y,r.h*.75,0,7);g.stroke();txt('PETRIFICUS TOTALUS !',W/2,130,40,'#9fe0ff')}
   txt('▼',p.x,p.y-p.h*.88,22,'#fff');if(!r.out)txt('Drago',r.x,r.y-r.h*.88,20,'#ff6060');
   for(const q of G.parts){g.globalAlpha=Math.max(0,q.l);g.fillStyle='#ffe96a';g.fillRect(q.x,q.y,4,4)}g.globalAlpha=1;
-  txt(`${G.el.toFixed(1)} s`,30,45,34,'#ffd700','left');txt('♥'.repeat(Math.max(0,G.lives)),30,88,34,'#ff5050','left');
+  txt(`${(G.el+G.pen).toFixed(1)} s`,30,45,34,'#ffd700','left');if(G.pen>0)txt(`Pénalités +${G.pen} s`,30,125,22,'#ff7070','left');txt('♥'.repeat(Math.max(0,G.lives)),30,88,34,'#ff5050','left');
   txt(G.sn?'ATTRAPE LE VIF D\'OR !':`Vif d'or dans ${Math.max(0,GOAL-G.dist)|0} m`,W/2,45,32,G.sn?'#ffd700':'#fff');
   txt(`Record ${G.rec.time?G.rec.time.toFixed(1)+' s':'—'}`,W-30,45,24,'#ccc','right');
   txt(r.out?'Drago éliminé':'Drago '+'♥'.repeat(Math.max(0,r.lives)),W-30,88,26,'#ff6060','right');
@@ -310,14 +314,14 @@ function drawRaceResult(){
   bg(W/2,H/2,.7);const w=G.win;
   txt(w==='p'?'VICTOIRE !':w==='r'?'DÉFAITE':'LE VIF S\'EST ENVOLÉ',W/2,120,76,w==='p'?'#50ff78':w==='r'?'#ff5050':'#fff');
   txt(w==='p'?'Tu as attrapé le Vif d\'or !':w==='r'?(G.out?'Tu as perdu toutes tes vies…':'Drago a attrapé le Vif d\'or…'):'Personne ne l\'a attrapé',W/2,230,38,'#fff');
-  if(w==='p')txt(`Temps : ${G.el.toFixed(1)} s`,W/2,310,40,'#80ff78');
+  if(w==='p'){txt(`Temps : ${G.tot.toFixed(1)} s`,W/2,310,40,'#80ff78');if(G.pen>0)txt(`dont ${G.pen} s de pénalités`,W/2,352,24,'#ff9090')}
   txt('Record : '+(G.rec.time?G.rec.time.toFixed(1)+' s':'—'),W/2,400,28,'#ffd700');
   txt('Touche l\'écran ou R pour revenir au menu',W/2,620,24,'#fff');
 }
 function drawRMenu(){
   bg(W/2,H/2,.7);txt('COURSE CONTRE DRAGO',W/2,50,44,'#ffd700');
   txt('Sous les tribunes : pousse Drago dans les poutres et les cognards, puis attrape le Vif d\'or !',W/2,115,22,'#fff');
-  txt(`Le Vif apparaît après ${GOAL} m • 3 vies chacun : ramasse les ♥ pour en regagner`,W/2,148,20,'#ccc');
+  txt(`Le Vif apparaît après ${GOAL} m, la course continue • choc : −1 ♥ et +2 s • ♥ = +1 vie`,W/2,148,20,'#ccc');
   const b=rbest();txt('Record : '+(b.time?b.time.toFixed(1)+' s':'—'),W/2,180,20,'#ffd700');
   CH.forEach((c,i)=>{const r=cardR(i);rbox(r,'rgba(30,30,55,.9)','#ffd700');spr(A[c.id],r.x+110,r.y+110,150,false);txt(c.nom,r.x+110,r.y+220,30,'#fff');txt(c.cap,r.x+110,r.y+256,22,'#ffd700')});
   difs();rbox(backR,'#32324a');txt('Retour',W/2,backR.y+25,24,'#fff');
@@ -364,7 +368,7 @@ function cards(){CH.forEach((c,i)=>{const r=cardR(i);rbox(r,'rgba(30,30,55,.9)',
 function difs(){txt('Difficulté',W/2,515,24,'#fff');DIF.forEach((d,i)=>{const r=difR(i);rbox(r,i===diff?'#ffd700':'#32324a');txt(d.n,r.x+80,r.y+26,24,i===diff?'#0a0a14':'#fff')})}
 function tile(i,title,sub,col){const r=homeR(i);rbox(r,'rgba(20,20,40,.88)',col);
   txt(title,r.x+r.w/2,r.y+225,32,col);sub.forEach((t,j)=>txt(t,r.x+r.w/2,r.y+272+j*28,20,'#ddd'));return r}
-const VERSION='v13';
+const VERSION='v14';
 function drawMenu(){
   bg(W/2,H/2,.6);txt(VERSION,24,H-16,16,'#9a9ab0','left');
   txt('QUIDDITCH CHAMPIONSHIP',W/2,90,64,'#ffd700');
@@ -382,7 +386,7 @@ function drawMenu(){
 }
 function drawQMenu(){
   bg(W/2,H/2,.7);txt('MATCH DE QUIDDITCH',W/2,50,44,'#ffd700');
-  txt('Choisis ton personnage pour affronter Drago',W/2,125,24,'#fff');
+  txt('Affronte Drago : Vif d\'or +10 points, cognard −5 points',W/2,125,24,'#fff');
   if(net.msg)txt(net.msg,W/2,165,24,'#ff8080');
   cards();difs();
   rbox(onR,'#2a5cff');txt('Jouer en ligne (2 tél.)',onR.x+190,onR.y+25,24,'#fff');
@@ -401,7 +405,7 @@ const hash=(i,L)=>{const x=Math.sin(i*127.1+L*311.7)*43758.5;return x-Math.floor
 function drawSMenu(){
   forest(0);g.fillStyle='rgba(0,0,10,.55)';g.fillRect(0,0,W,H);txt('LA FORÊT INTERDITE',W/2,50,44,'#b04aff');
   txt('Fuis les araignées d\'Aragog… puis échappe-toi de l\'araignée géante !',W/2,115,22,'#fff');
-  txt(`Parcours ${GOAL2} m, puis survis ${BOSS_T} s • 3 vies : ramasse les ♥ pour en regagner`,W/2,148,20,'#ccc');
+  txt(`Parcours ${GOAL2} m, survis ${BOSS_T} s, puis franchis la ligne d'arrivée • choc : −1 ♥ et +2 s`,W/2,148,20,'#ccc');
   const b=rbest();txt('Record : '+(b.sp?b.sp.toFixed(1)+' s':'—'),W/2,180,20,'#ffd700');
   CH.forEach((c,i)=>{const r=cardR(i);rbox(r,'rgba(30,30,55,.9)','#b04aff');spr(A[c.id],r.x+110,r.y+110,150,false);txt(c.nom,r.x+110,r.y+220,30,'#fff');txt(c.cap,r.x+110,r.y+256,22,'#ffd700')});
   difs();rbox(backR,'#32324a');txt('Retour',W/2,backR.y+25,24,'#fff');
@@ -413,15 +417,15 @@ function smenuClick(m){
 }
 function newSpider(c){
   needName();
-  G={mode:'spider',ch:c,d:DIF[diff],cnt:3.99,el:0,dist:0,bonus:0,scroll:0,lives:3,slow:0,web:0,spawn:1,phase:0,bw:0,bt:0,bz:null,won:false,obs:[],parts:[],ev:[],me:'p',frz:0,rec:rbest(),
+  G={mode:'spider',ch:c,d:DIF[diff],cnt:3.99,el:0,dist:0,bonus:0,scroll:0,lives:3,slow:0,web:0,spawn:1,phase:0,bw:0,bt:0,bz:null,fin:null,pen:0,pops:[],won:false,obs:[],parts:[],ev:[],me:'p',frz:0,rec:rbest(),
      p:{x:300,y:360,h:c.h,face:1,stun:0,inv:0,boost:0,shield:0,dash:0,cd:0,score:0},r:{cd:0}};
   state='count';
 }
-function crashS(){const p=G.p;fx('c');p.inv=2;p.stun=.5;G.slow=1;p.x=cl(p.x-70,40,W-40);if(--G.lives<=0)endSpider(false)}
+function crashS(){const p=G.p;G.pen+=2;pop(p.x,p.y-60,'+2 s','#ff7070');fx('c');p.inv=2;p.stun=.5;G.slow=1;p.x=cl(p.x-70,40,W-40);if(--G.lives<=0)endSpider(false)}
 function endSpider(w){
-  G.won=w;
-  try{const b=rbest();b.spd=Math.max(b.spd||0,G.dist|0);if(w)b.sp=Math.min(b.sp||1e9,G.el);localStorage.setItem('quid_race',JSON.stringify(b));
-    if(w){const l=JSON.parse(localStorage.getItem('quid_rl'))||[];l.push({j:pname,rm:2,v:G.el,c:G.ch.nom});localStorage.setItem('quid_rl',JSON.stringify(l.slice(-200)))}}catch(e){}
+  G.won=w;G.tot=G.el+G.pen;
+  try{const b=rbest();b.spd=Math.max(b.spd||0,G.dist|0);if(w)b.sp=Math.min(b.sp||1e9,G.tot);localStorage.setItem('quid_race',JSON.stringify(b));
+    if(w){const l=JSON.parse(localStorage.getItem('quid_rl'))||[];l.push({j:pname,rm:2,v:G.tot,c:G.ch.nom});localStorage.setItem('quid_rl',JSON.stringify(l.slice(-200)))}}catch(e){}
   G.rec=rbest();state='result';G.endT=0;
 }
 function updateSpider(dt){
@@ -436,7 +440,7 @@ function updateSpider(dt){
   if(G.phase===1&&G.bw<2)G.bw+=dt;
   const warn=G.phase===1&&G.bw<2,fight=G.phase===1&&G.bw>=2;
   if(warn){const e=Math.min(1,G.bw/2);G.bz.front=-380+450*(1-(1-e)*(1-e))}
-  if(!warn&&(G.spawn-=dt)<=0){
+  if(!warn&&!G.fin&&(G.spawn-=dt)<=0){
     G.spawn=Math.max(.45,1.15-G.el*.007)/G.d.sn*(fight?1.3:1);const q=Math.random();
     if(q<.1&&G.lives<3)G.obs.push({t:'l',x:W+40,y:rand(80,H-80),r:22});
     else if(q<.28)G.obs.push({t:'w',x:W+80,y:rand(100,H-100),r:60});
@@ -465,8 +469,9 @@ function updateSpider(dt){
     if(B.ph==='idle'||B.ph==='back'){
       if(B.sp>0){B.sp-=dt;if(B.sp<=0){const an=Math.atan2(p.y-B.y,p.x-B.front);G.obs.push({t:'v',x:B.front+20,y:B.y,vx:Math.cos(an)*540,vy:Math.sin(an)*540,r:16});B.ns=rand(1.5,2.2)}}
       else if((B.ns-=dt)<=0)B.sp=.45}
-    if(G.bt>=BOSS_T){endSpider(true);return}}
-  for(const q of G.parts){q.x+=q.vx*k;q.y+=q.vy*k;q.l-=dt}G.parts=G.parts.filter(q=>q.l>0);
+    if(G.bt>=BOSS_T-4.5&&!G.fin)G.fin={x:p.x+v*4.5}}
+  if(G.fin){G.fin.x-=v*dt;if(G.fin.x<=p.x){endSpider(true);return}}
+  for(const q of G.parts){q.x+=q.vx*k;q.y+=q.vy*k;q.l-=dt}G.parts=G.parts.filter(q=>q.l>0);popTick(dt);
 }
 function bug(x,y,r,t,col='#241f2e'){
   g.save();g.translate(x,y);g.strokeStyle=col;g.lineCap='round';g.lineWidth=Math.max(2,r*.14);
@@ -540,12 +545,17 @@ function drawSpiderGame(){
     if(B.ph==='tele'){g.fillStyle=`rgba(255,40,40,${.16+.1*Math.sin(G.el*30)})`;g.fillRect(0,B.y-110,560,220);txt('!',590,B.y,64,'#ff4040')}
     g.save();g.translate(B.front-200,B.y+(B.ph==='idle'?Math.sin(G.el*2)*10:0));g.scale(.8,.8);boss(G.el);g.restore();
     if(B.sp>0){g.save();g.fillStyle='rgba(120,255,80,.8)';g.shadowColor='#7f5';g.shadowBlur=20;g.beginPath();g.arc(B.front+20,B.y,26*(1-B.sp/.45)+8,0,7);g.fill();g.restore()}}
+  if(G.fin){const x=G.fin.x,gl=g.createLinearGradient(x,0,x+420,0);gl.addColorStop(0,'rgba(255,255,210,.6)');gl.addColorStop(1,'rgba(255,255,210,0)');
+    g.fillStyle=gl;g.fillRect(x,0,420,H);
+    for(let y=0;y<H;y+=36)for(let c=0;c<2;c++){g.fillStyle=((y/36+c)%2)?'#fff':'#111';g.fillRect(x-36+c*36,y,36,36)}
+    txt('ARRIVÉE',x,70,40,'#fff')}
   for(const o of G.obs){
     if(o.t==='w')web(o.x,o.y,o.r);
     else if(o.t==='h'){g.strokeStyle='rgba(220,220,230,.6)';g.lineWidth=2;g.beginPath();g.moveTo(o.x,0);g.lineTo(o.x,o.y);g.stroke();bug(o.x,o.y,o.r,G.el+o.ph)}
     else if(o.t==='v'){g.save();g.fillStyle='#8f4';g.shadowColor='#7f5';g.shadowBlur=18;g.beginPath();g.arc(o.x,o.y,o.r,0,7);g.fill();g.restore()}
     else if(o.t==='g')bug(o.x,o.y,o.r,G.el*1.5+o.ph);
     else heart(o.x,o.y,o.r)}
+  drawPops();
   if(p.boost>0){g.fillStyle='rgba(255,215,0,.25)';g.beginPath();g.arc(p.x-40,p.y,p.h*.45,0,7);g.fill()}
   spr(A[G.ch.id],p.x,p.y,p.h*VS,p.face*G.ch.nat<0,p.inv>0?.5+.4*Math.sin(G.el*30):1);
   if(p.shield>0){g.beginPath();g.arc(p.x,p.y,p.h*1.0,0,7);g.strokeStyle='rgba(120,200,255,.9)';g.lineWidth=5;g.stroke()}
@@ -553,9 +563,9 @@ function drawSpiderGame(){
   for(const q of G.parts){g.globalAlpha=Math.max(0,q.l);g.fillStyle='#ffe96a';g.fillRect(q.x,q.y,4,4)}g.globalAlpha=1;
   g.restore();
   if(warn){txt('L\'ARAIGNÉE GÉANTE !',W/2,250,70,'#ff4040');txt('COURS !',W/2,335,50,'#fff')}
-  txt(`${G.dist|0} m`,30,45,34,'#ffd700','left');
+  txt(`${G.dist|0} m`,30,45,34,'#ffd700','left');txt(`${(G.el+G.pen).toFixed(1)} s`,30,88,30,'#fff','left');if(G.pen>0)txt(`Pénalités +${G.pen} s`,30,125,22,'#ff7070','left');
   txt('♥'.repeat(Math.max(0,G.lives)),W/2,45,38,'#ff5050');
-  txt(G.phase===0?`Araignée géante dans ${Math.max(0,GOAL2-G.dist)|0} m`:fight?`Survis ! ${Math.ceil(BOSS_T-G.bt)} s`:'',W-30,45,24,'#ccc','right');
+  txt(G.phase===0?`Araignée géante dans ${Math.max(0,GOAL2-G.dist)|0} m`:G.fin?'Cours vers la sortie !':fight?`Survis ! ${Math.ceil(BOSS_T-G.bt)} s`:'',W-30,45,24,'#ccc','right');
   g.fillStyle='rgba(0,0,0,.5)';g.fillRect(200,H-24,W-400,10);
   g.fillStyle=G.phase===0?'#80ff78':'#ff5050';g.fillRect(200,H-24,(W-400)*(G.phase===0?Math.min(1,G.dist/GOAL2):fight?1-G.bt/BOSS_T:1),10);
   rbox(pauseR,'rgba(0,0,0,.5)');txt('II',pauseR.x+Z/2,pauseR.y+Z/2,Z/2,'#fff');
@@ -569,7 +579,7 @@ function drawSpiderResult(){
   bg(W/2,H/2,.8);const w=G.won;
   txt(w?'TU T\'ES ÉCHAPPÉ !':'CAPTURÉ PAR LES ARAIGNÉES',W/2,120,w?70:56,w?'#80ff78':'#ff5050');
   txt(`${G.dist|0} m`,W/2,230,64,'#fff');
-  if(w)txt(`Temps : ${G.el.toFixed(1)} s`,W/2,310,40,'#80ff78');
+  if(w){txt(`Temps : ${G.tot.toFixed(1)} s`,W/2,310,40,'#80ff78');if(G.pen>0)txt(`dont ${G.pen} s de pénalités`,W/2,352,24,'#ff9090')}
   else txt(G.phase?'L\'araignée géante t\'a rattrapé…':'Tu n\'as pas atteint la clairière…',W/2,310,30,'#ccc');
   txt('Record : '+(G.rec.sp?G.rec.sp.toFixed(1)+' s':'—'),W/2,400,28,'#ffd700');
   txt('Touche l\'écran ou R pour revenir au menu',W/2,620,24,'#fff');
@@ -593,6 +603,7 @@ function drawMatch(){
   spr(A.vif,s.x,s.y,50,false,s.fade>0?.4+.3*Math.sin(G.el*40):1,1+.15*Math.sin(G.el*45));g.restore();
   for(const q of G.parts){g.globalAlpha=Math.max(0,q.l);g.fillStyle='#ffe96a';g.fillRect(q.x,q.y,4,4)}
   g.globalAlpha=1;
+  drawPops();
   if(G.frz>0){g.fillStyle='rgba(120,200,255,.12)';g.fillRect(0,0,W,H);g.strokeStyle='rgba(170,230,255,.95)';g.lineWidth=4;
     for(const t of[{x:r.x,y:r.y,q:r.h*.5},...G.bl.map(b=>({x:b.x,y:b.y,q:26}))]){g.beginPath();g.arc(t.x,t.y,t.q,0,7);g.stroke()}
     txt('PETRIFICUS TOTALUS !',W/2,130,44,'#9fe0ff')}
