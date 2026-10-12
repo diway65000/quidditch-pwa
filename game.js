@@ -27,7 +27,7 @@ let swap=false;try{swap=localStorage.getItem('quid_swap')==='1'}catch(e){}
 function setSwap(v){swap=v;document.body.classList.toggle('swap',v);try{localStorage.setItem('quid_swap',v?'1':'0')}catch(e){}}
 const net={role:null,conn:null,peer:null,code:'',msg:'',ready:false,inp:{ax:0,ay:0},acc:0};
 
-/* ---------- synthétiseur audio (jingles rétro Mario ~3 s) ---------- */
+/* ---------- audio (Web Audio API + assets) ---------- */
 let actx=null;
 function getAudioCtx(){
   if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();
@@ -75,14 +75,25 @@ async function boot(){
   g.fillStyle='#0a0a14';g.fillRect(0,0,W,H);txt('Chargement…',W/2,H/2,44,'#ffd700');
   await Promise.all(Object.keys(FILES).map(async k=>{A[k]=await loadImg(FILES[k])}));
   requestAnimationFrame(loop);
-  aud('musique_magie.mp3').then(a=>{music=a;music.loop=true;music.volume=.4;music.muted=muted;if(wantMusic)startMusic()}).catch(()=>{});
+  aud('musique_magie.mp3').then(a=>{
+    music=a;music.loop=true;music.volume=.4;music.muted=muted;
+    if(wantMusic)startMusic();
+  }).catch(()=>{});
   aud('attrape.mp3').then(a=>S.attrape=a).catch(()=>{});
   aud('collision.wav').then(a=>S.collision=a).catch(()=>{});
 }
 const sfx=n=>{if(muted||!S[n])return;const a=S[n].cloneNode();a.volume=.8;a.play().catch(()=>{})};
-function setMute(m){muted=m;if(music)music.muted=m}
-let wantMusic=false;
-function startMusic(){wantMusic=true;if(!musicOn&&music){musicOn=true;music.play().catch(()=>musicOn=false)}}
+function setMute(m){
+  muted=m;
+  if(music)music.muted=m;
+}
+let wantMusic=true;
+function startMusic(){
+  wantMusic=true;
+  if(!musicOn&&music){
+    music.play().then(()=>{musicOn=true}).catch(()=>{});
+  }
+}
 
 /* ---------- scores ---------- */
 const hist=()=>{try{return JSON.parse(localStorage.getItem('quid_hist'))||[]}catch(e){return[]}};
@@ -91,7 +102,7 @@ const best=()=>hist().reduce((m,e)=>Math.max(m,e.p),0);
 
 /* ---------- partie match ---------- */
 function newGame(ch){
-  needName();const d=DIF[diff];
+  needName();startMusic();const d=DIF[diff];
   G={ch,d,t:60,cnt:3.99,el:0,cc:0,parts:[],trail:[],endT:0,win:null,
    p:{x:150,y:360,h:ch.h,face:1,stun:0,inv:0,boost:0,shield:0,dash:0,cd:0,score:0},
    r:{x:1130,y:360,h:90,face:-1,stun:0,inv:0,score:0,tx:640,ty:360,nt:0},
@@ -275,7 +286,7 @@ function drawLobby(){
 const cl=(v,a,b)=>Math.min(b,Math.max(a,v));
 const rbest=()=>{try{return JSON.parse(localStorage.getItem('quid_race'))||{}}catch(e){return{}}};
 function newRace(c){
-  needName();
+  needName();startMusic();
   const mk=(x,y,h)=>({x,y,h,face:1,stun:0,inv:0,boost:0,shield:0,dash:0,cd:0,score:0,vx:0,vy:0,kx:0,ky:0});
   G={mode:'race',rm:1,ch:c,d:DIF[diff],cnt:3.99,el:0,dist:0,scroll:0,spawn:1.2,obs:[],parts:[],ev:[],me:'p',frz:0,cc:0,rec:rbest(),win:null,sn:null,sw:0,lives:3,out:false,dm:0,pen:0,pops:[],endT:0,
      p:mk(250,300,c.h),r:Object.assign(mk(250,440,90),{tx:600,ty:360,mode:0,mt:2,nt:0,ex:0,ey:0,lives:3,out:false})};
@@ -337,7 +348,6 @@ function updateRace(dt){
   for(const o of G.obs){o.x-=(rv+(o.t==='b'?120:0))*dt;if(o.t==='b')o.y=cl(o.y0+Math.sin(G.el*3+o.ph)*o.amp,20,H-20)}
   G.obs=G.obs.filter(o=>o.x>-120);
 
-  // IA Drago : ignore le Vif d'or tant qu'il clignote
   if(r.out||G.frz>0){r.vx=r.vy=0}else{
     const ag=[.3,.6,1][diff];
     if((r.mt-=dt)<=0){r.mt=rand(2,4);r.mode=Math.random()<ag*.7?1:0}
@@ -615,7 +625,7 @@ function backToMenu(){const m=G&&G.mode;leave();state=m==='race'?'rmenu':m==='sp
 /* ---------- MODE FORÊT INTERDITE ---------- */
 const hash=(i,L)=>{const x=Math.sin(i*127.1+L*311.7)*43758.5;return x-Math.floor(x)};
 function drawSMenu(){
-  forest(0);g.fillStyle='rgba(0,0,10,.55)';g.fillRect(0,0,W,H);txt('LA FORÊT INTERDITE',W/2,50,44,'#b04aff');
+  forest(0);g.fillStyle='rgba(0,0,10,.55)';g.fillRect(0,0,W/2,H);txt('LA FORÊT INTERDITE',W/2,50,44,'#b04aff');
   txt('Fuis les araignées d\'Aragog… puis échappe-toi de l\'araignée géante !',W/2,115,22,'#fff');
   txt(`Parcours ${GOAL2} m, survis ${BOSS_T} s, puis franchis la ligne d'arrivée • choc : −1 ♥ et +2 s`,W/2,148,20,'#ccc');
   const b=rbest();txt('Record : '+(b.sp?b.sp.toFixed(1)+' s':'—'),W/2,180,20,'#ffd700');
@@ -628,7 +638,7 @@ function smenuClick(m){
   CH.forEach((c,i)=>{if(hit(cardR(i),m))newSpider(c)});
 }
 function newSpider(c){
-  needName();
+  needName();startMusic();
   G={mode:'spider',ch:c,d:DIF[diff],cnt:3.99,el:0,dist:0,bonus:0,scroll:0,lives:3,slow:0,web:0,spawn:1,phase:0,bw:0,bt:0,bz:null,fin:null,pen:0,pops:[],won:false,obs:[],parts:[],ev:[],me:'p',frz:0,rec:rbest(),endT:0,win:null,
      p:{x:300,y:360,h:c.h,face:1,stun:0,inv:0,boost:0,shield:0,dash:0,cd:0,score:0},r:{cd:0}};
   state='count';
@@ -850,6 +860,17 @@ function drawMatch(){
 /* ---------- boucle principale et événements ---------- */
 function loop(t){
   const dt=Math.min(0.05,(t-last)/1000);last=t;
+
+  // Gestion visibilité commandes tactiles HTML (.side) et cooldown
+  const inGame=['play','count','pause','ending'].includes(state);
+  document.body.classList.toggle('ig',inGame);
+  if(pwBtn&&G&&G.p){
+    const cd=G.p.cd||0;
+    pwBtn.classList.toggle('cd',cd>0);
+    const pwl=document.getElementById('pwl');
+    if(pwl)pwl.textContent=cd>0?Math.ceil(cd):G.ch.cap;
+  }
+
   if(state==='play'||state==='ending'||state==='count'){
     update(dt);
     if(net.role==='host')netTick(dt);
@@ -889,6 +910,7 @@ window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
 const joy={on:false,x:0,y:0};
 cv.addEventListener('pointerdown',e=>{
   getAudioCtx();
+  startMusic();
   const m=getM(e);
   if(state==='menu'){
     if(hit(homeR(0),m))state='qmenu';
@@ -919,10 +941,14 @@ cv.addEventListener('pointercancel',()=>touch=null);
 // Boutons mobiles tactiles latéraux
 const pwBtn=document.getElementById('pw'),joyEl=document.getElementById('joy'),knobEl=document.getElementById('knob');
 if(pwBtn){
-  pwBtn.addEventListener('pointerdown',e=>{e.preventDefault();getAudioCtx();ability()});
+  pwBtn.addEventListener('pointerdown',e=>{
+    e.preventDefault();
+    getAudioCtx();
+    startMusic();
+    ability();
+  });
 }
 if(joyEl&&knobEl){
-  const center={x:50,y:50};
   const handleJoy=e=>{
     const rect=joyEl.getBoundingClientRect();
     const cx=e.clientX-rect.left,cy=e.clientY-rect.top;
@@ -931,7 +957,12 @@ if(joyEl&&knobEl){
     knobEl.style.transform=`translate(${dx}px,${dy}px)`;
     joy.x=dx/40;joy.y=dy/40;joy.on=true;
   };
-  joyEl.addEventListener('pointerdown',e=>{e.preventDefault();getAudioCtx();handleJoy(e)});
+  joyEl.addEventListener('pointerdown',e=>{
+    e.preventDefault();
+    getAudioCtx();
+    startMusic();
+    handleJoy(e);
+  });
   window.addEventListener('pointermove',e=>{if(joy.on)handleJoy(e)});
   const endJoy=()=>{joy.on=false;joy.x=0;joy.y=0;if(knobEl)knobEl.style.transform='none'};
   window.addEventListener('pointerup',endJoy);
