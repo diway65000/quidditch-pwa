@@ -1,4 +1,4 @@
-const C='quidditch-v14';
+const C='quidditch-v17';
 const F=['./','index.html','game.js','peerjs.min.js','manifest.json',...['stade.jpg','vif_or.png','harry.png','drago.png','hermione.png','elise.png','foret.jpg','tribune.jpg','musique_magie.mp3','attrape.mp3','collision.wav','icon-192.png','icon-512.png'].map(f=>'assets/'+f)];
 // Précharge tolérante : un fichier manquant n'empêche plus l'installation
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>Promise.all(F.map(f=>c.add(f).catch(()=>{})))));self.skipWaiting()});

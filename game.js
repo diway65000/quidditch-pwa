@@ -44,24 +44,26 @@ function playTone(freq,start,dur,type='square',gainVal=0.22){
 }
 function sfxWinLong(){
   if(muted)return;
-  // Fanfare Mario level complete (en 2 temps, ~2.8 s)
   const seq=[
-    {f:392.00,d:0.12,t:0.00},{f:523.25,d:0.12,t:0.14},{f:659.25,d:0.12,t:0.28},{f:783.99,d:0.14,t:0.42},
-    {f:659.25,d:0.12,t:0.58},{f:783.99,d:0.32,t:0.72},
-    {f:698.46,d:0.12,t:1.15},{f:880.00,d:0.12,t:1.30},{f:1046.50,d:0.14,t:1.45},
-    {f:880.00,d:0.12,t:1.62},{f:1046.50,d:0.35,t:1.76},
-    {f:1174.66,d:0.18,t:2.18},{f:1046.50,d:0.55,t:2.38}
+    {f:392.00,d:0.12,t:0.00},{f:523.25,d:0.12,t:0.13},{f:659.25,d:0.12,t:0.26},{f:783.99,d:0.14,t:0.39},
+    {f:659.25,d:0.12,t:0.54},{f:783.99,d:0.35,t:0.68},
+    {f:698.46,d:0.12,t:1.10},{f:880.00,d:0.12,t:1.23},{f:1046.50,d:0.14,t:1.36},
+    {f:880.00,d:0.12,t:1.52},{f:1046.50,d:0.35,t:1.66},
+    {f:987.77,d:0.14,t:2.10},{f:1174.66,d:0.18,t:2.26},{f:1318.51,d:0.18,t:2.46},
+    {f:1046.50,d:0.75,t:2.66}
   ];
-  seq.forEach(n=>playTone(n.f,n.t,n.d,'triangle',0.28));
+  seq.forEach(n=>{
+    playTone(n.f,n.t,n.d,'square',0.22);
+    playTone(n.f/2,n.t,n.d,'triangle',0.28);
+  });
 }
 function sfxLoseLong(){
   if(muted)return;
-  // Thème Mario Game Over (descente chromatique ralentie, ~3.0 s)
   const seq=[
-    {f:523.25,d:0.14,t:0.00},{f:392.00,d:0.14,t:0.18},{f:329.63,d:0.16,t:0.36},
-    {f:440.00,d:0.18,t:0.58},{f:493.88,d:0.18,t:0.78},{f:440.00,d:0.20,t:0.98},
-    {f:415.30,d:0.24,t:1.24},{f:466.16,d:0.24,t:1.52},{f:415.30,d:0.26,t:1.80},
-    {f:369.99,d:0.35,t:2.12},{f:329.63,d:0.35,t:2.50},{f:261.63,d:0.65,t:2.90}
+    {f:523.25,d:0.16,t:0.00},{f:392.00,d:0.16,t:0.20},{f:329.63,d:0.18,t:0.40},
+    {f:440.00,d:0.18,t:0.65},{f:493.88,d:0.18,t:0.88},{f:440.00,d:0.20,t:1.10},
+    {f:415.30,d:0.24,t:1.35},{f:466.16,d:0.24,t:1.64},{f:415.30,d:0.26,t:1.92},
+    {f:369.99,d:0.32,t:2.24},{f:329.63,d:0.36,t:2.60},{f:261.63,d:0.75,t:3.00}
   ];
   seq.forEach(n=>playTone(n.f,n.t,n.d,'sawtooth',0.24));
 }
@@ -142,6 +144,16 @@ function update(dt){
   if(state==='count'){G.cnt-=dt;if(G.cnt<=0){state='play'}return}
   if(G.mode==='race')return updateRace(dt);
   if(G.mode==='spider')return updateSpider(dt);
+
+  if(state==='ending'){
+    G.endT+=dt;
+    for(const q of G.parts){q.x+=q.vx*k;q.y+=q.vy*k;q.l-=dt}
+    G.parts=G.parts.filter(q=>q.l>0);
+    popTick(dt);
+    if(G.endT>=3.5)state='match_res';
+    return;
+  }
+
   G.t-=dt;G.el+=dt;G.cc-=dt;if(G.frz>0)G.frz-=dt;const fz=G.frz>0;
   if(G.t<=0){G.t=0;endGame();return}
   for(const o of[p,r])for(const f of['stun','inv','boost','shield','dash','cd'])if(o[f]>0)o[f]-=dt;
@@ -293,7 +305,20 @@ function endRace(w){
   G.rec=rbest();G.endT=0;state='ending';
 }
 function updateRace(dt){
-  const k=dt*60,{p,r,d}=G;G.el+=dt;G.cc-=dt;if(G.frz>0)G.frz-=dt;if(G.dm>0)G.dm-=dt;
+  const k=dt*60,{p,r,d}=G;
+
+  if(state==='ending'){
+    G.endT+=dt;
+    const rv=300;
+    G.scroll+=rv*dt;G.dist=G.scroll/40;
+    for(const q of G.parts){q.x+=q.vx*k;q.y+=q.vy*k;q.l-=dt}
+    G.parts=G.parts.filter(q=>q.l>0);
+    popTick(dt);
+    if(G.endT>=3.5)state='race_res';
+    return;
+  }
+
+  G.el+=dt;G.cc-=dt;if(G.frz>0)G.frz-=dt;if(G.dm>0)G.dm-=dt;
   for(const o of[p,r])for(const f of['stun','inv','boost','shield','cd'])if(o[f]>0)o[f]-=dt;
   const dc=Math.pow(.9,k);
 
@@ -391,24 +416,19 @@ function drawRace(){
     else{g.save();g.beginPath();g.arc(o.x,o.y,o.r,0,7);g.fillStyle='#1c1c22';g.fill();g.strokeStyle='#e33';g.lineWidth=3;g.stroke();
       g.beginPath();g.arc(o.x-6,o.y-6,5,0,7);g.fillStyle='rgba(255,255,255,.35)';g.fill();g.restore()}}
 
-  // Signalement puissant du Vif d'or
-  if(G.sn){
+  if(G.sn&&state!=='ending'){
     const s=G.sn,blink=s.warmup>0;
     if(blink){
-      // Faisceau lumineux horizontal guidant l'œil vers le Vif d'or
       g.save();
       const beamGrad=g.createLinearGradient(0,s.y,s.x,s.y);
       beamGrad.addColorStop(0,'rgba(255,215,0,0)');
       beamGrad.addColorStop(1,`rgba(255,215,0,${0.25+0.15*Math.sin(G.el*20)})`);
       g.fillStyle=beamGrad;g.fillRect(0,s.y-25,s.x,50);
       
-      // Onde de choc pulsante autour du vif
       const waveR=(G.el*80)%90+20;
       g.strokeStyle=`rgba(255,215,0,${Math.max(0,1-waveR/110)})`;
       g.lineWidth=4;g.beginPath();g.arc(s.x,s.y,waveR,0,7);g.stroke();
       g.restore();
-
-      // Flèche clignotante à côté du Vif
       txt('◄',s.x+45+Math.sin(G.el*18)*8,s.y,38,'#ffd700');
     }
 
@@ -418,7 +438,6 @@ function drawRace(){
     g.restore();
 
     if(blink){
-      // Bandeau d'alerte très visible
       g.save();
       g.fillStyle='rgba(10,10,20,.75)';
       g.fillRect(W/2-330,85,660,54);
@@ -447,8 +466,10 @@ function drawRace(){
   for(const q of G.parts){g.globalAlpha=Math.max(0,q.l);g.fillStyle=q.col||'#ffe96a';g.fillRect(q.x,q.y,4,4)}g.globalAlpha=1;
   txt(`${(G.el+G.pen).toFixed(1)} s`,30,45,34,'#ffd700','left');if(G.pen>0)txt(`Pénalités +${G.pen} s`,30,125,22,'#ff7070','left');txt('♥'.repeat(Math.max(0,G.lives)),30,88,34,'#ff5050','left');
   
-  const snHeader=G.sn?(G.sn.warmup>0?'PRÉPARE-TOI !':'ATTRAPE LE VIF D\'OR !'):`Vif d'or dans ${Math.max(0,GOAL-G.dist)|0} m`;
-  txt(snHeader,W/2,45,32,G.sn?'#ffd700':'#fff');
+  if(state!=='ending'){
+    const snHeader=G.sn?(G.sn.warmup>0?'PRÉPARE-TOI !':'ATTRAPE LE VIF D\'OR !'):`Vif d'or dans ${Math.max(0,GOAL-G.dist)|0} m`;
+    txt(snHeader,W/2,45,32,G.sn?'#ffd700':'#fff');
+  }
   txt(`Record ${G.rec.time?G.rec.time.toFixed(1)+' s':'—'}`,W-30,45,24,'#ccc','right');
   txt(r.out?'Drago éliminé':'Drago '+'♥'.repeat(Math.max(0,r.lives)),W-30,88,26,'#ff6060','right');
   if(G.dm>0&&state!=='ending')txt('DRAGO EST ÉLIMINÉ !',W/2,160,52,'#ffd700');
@@ -459,36 +480,45 @@ function drawRace(){
     txt(p.cd>0?Math.ceil(p.cd):G.ch.cap,abP.x,abP.y,p.cd>0?30:18,p.cd>0?'#fff':'#0a0a14')}
   if(state==='count')txt(G.cnt>.99?Math.ceil(G.cnt-.99)+'':'GO !',W/2,H/2,140,'#ffd700');
   if(state==='pause'){g.fillStyle='rgba(0,0,0,.6)';g.fillRect(0,0,W,H);txt('PAUSE',W/2,300,80,'#ffd700');txt('Touche / P pour reprendre • R pour le menu',W/2,400,26,'#fff')}
-  if(state==='ending')drawEndingBanner();
 }
 
-/* ---------- transition sur l'écran de jeu (in-game ending) ---------- */
+/* ---------- transition in-game (Mario Ending) ---------- */
 function drawEndingActor(o,im,fl){
   const t=G.endT,isPlayer=o===G.p;
   const isWinner=(G.win==='p'&&isPlayer)||(G.win==='r'&&!isPlayer);
   if(isWinner){
-    if(Math.random()<0.35){
-      const fxX=o.x+rand(-130,130),fxY=o.y+rand(-90,40);
-      burst(fxX,fxY,['#ffd700','#ff5050','#50ff78','#50b0ff','#ff80e0'][Math.random()*5|0]);
+    if(Math.random()<0.45){
+      const fxX=o.x+rand(-160,160),fxY=o.y+rand(-120,60);
+      burst(fxX,fxY,['#ffd700','#ff3344','#44ff77','#33bbee','#ff77ff','#ffffff'][Math.random()*6|0]);
     }
-    const jumpY=Math.abs(Math.sin(t*5.5))*-50;
-    spr(im,o.x,o.y+jumpY,o.h*VS,fl,1);
-  }else{
-    const p=Math.min(1,t/2.0),sc=Math.max(0,1-p);
+    const pVal=Math.min(1,t/2.2);
+    const scale=1.0+pVal*1.2;
+    const floatY=Math.sin(t*6)*18;
     g.save();
-    g.translate(o.x,o.y+p*120);
-    g.rotate(t*13);
-    g.scale(sc,sc);
-    g.globalAlpha=Math.max(0,1-p);
-    spr(im,0,0,o.h*VS,fl,1);
+    g.translate(o.x,o.y+floatY);
+    g.scale(fl?-scale:scale,scale);
+    spr(im,0,0,o.h*VS,false,1);
+    g.restore();
+  }else{
+    const rotSpeed=t*16;
+    const fallY=Math.pow(t*18,2);
+    const shrink=Math.max(0,1-t/2.6);
+    g.save();
+    g.translate(o.x,o.y-(t<0.3?t*120:36)+fallY);
+    g.rotate(rotSpeed);
+    g.scale(shrink,shrink);
+    spr(im,0,0,o.h*VS,fl,Math.max(0,1-t/3.0));
     g.restore();
   }
 }
-function drawEndingBanner(){
-  const isWin=G.win==='p';
-  g.fillStyle='rgba(0,0,0,.45)';g.fillRect(0,0,W,H);
-  txt(isWin?'VICTOIRE !':G.win==='r'?'DÉFAITE':'ÉGALITÉ',W/2,H/2-100,88,isWin?'#50ff78':G.win==='r'?'#ff5050':'#fff');
-  txt(isWin?'Tu as triomphé !':'Drago remporte la manche…',W/2,H/2-25,32,'#ffd700');
+
+function drawMatchResult(){
+  bg(W/2,H/2,.7);
+  const isWin=G.win==='p',isTie=G.win==='tie';
+  txt(isWin?'VICTOIRE !':isTie?'ÉGALITÉ':'DÉFAITE',W/2,120,84,isWin?'#50ff78':isTie?'#ffd700':'#ff5050');
+  txt(isWin?'Tu as triomphé dans le ciel !':isTie?'Match nul !':'Drago remporte la coupe…',W/2,210,32,'#fff');
+  txt(`Score : ${G.p.score} - ${G.r.score}`,W/2,300,48,'#ffd700');
+  txt('Touche l\'écran ou R pour revenir au menu',W/2,660,24,'#fff');
 }
 
 function drawRaceResult(){
@@ -550,7 +580,7 @@ function cards(){CH.forEach((c,i)=>{const r=cardR(i);rbox(r,'rgba(30,30,55,.9)',
 function difs(){txt('Difficulté',W/2,515,24,'#fff');DIF.forEach((d,i)=>{const r=difR(i);rbox(r,i===diff?'#ffd700':'#32324a');txt(d.n,r.x+80,r.y+26,24,i===diff?'#0a0a14':'#fff')})}
 function tile(i,title,sub,col){const r=homeR(i);rbox(r,'rgba(20,20,40,.88)',col);
   txt(title,r.x+r.w/2,r.y+225,32,col);sub.forEach((t,j)=>txt(t,r.x+r.w/2,r.y+272+j*28,20,'#ddd'));return r}
-const VERSION='v16';
+const VERSION='v17';
 function drawMenu(){
   bg(W/2,H/2,.6);txt(VERSION,24,H-16,16,'#9a9ab0','left');
   txt('QUIDDITCH CHAMPIONSHIP',W/2,90,64,'#ffd700');
@@ -612,7 +642,20 @@ function endSpider(w){
   if(w)sfxWinLong();else sfxLoseLong();
 }
 function updateSpider(dt){
-  const k=dt*60,p=G.p;G.el+=dt;
+  const k=dt*60,p=G.p;
+
+  if(state==='ending'){
+    G.endT+=dt;
+    const v=300;
+    G.scroll+=v*dt;G.dist=G.scroll/40+G.bonus;
+    for(const q of G.parts){q.x+=q.vx*k;q.y+=q.vy*k;q.l-=dt}
+    G.parts=G.parts.filter(q=>q.l>0);
+    popTick(dt);
+    if(G.endT>=3.5)state='spider_res';
+    return;
+  }
+
+  G.el+=dt;
   for(const f of['stun','inv','boost','shield','cd'])if(p[f]>0)p[f]-=dt;
   if(G.slow>0)G.slow-=dt;if(G.web>0)G.web-=dt;
   const[ax,ay]=readInput(p),sp=G.ch.vit*.9*(p.stun>0?.4:1)*(G.web>0?.55:1);
@@ -761,7 +804,6 @@ function drawSpiderGame(){
     txt(p.cd>0?Math.ceil(p.cd):G.ch.cap,abP.x,abP.y,p.cd>0?30:18,p.cd>0?'#fff':'#0a0a14')}
   if(state==='count')txt(G.cnt>.99?Math.ceil(G.cnt-.99)+'':'GO !',W/2,H/2,140,'#ffd700');
   if(state==='pause'){g.fillStyle='rgba(0,0,0,.6)';g.fillRect(0,0,W,H);txt('PAUSE',W/2,300,80,'#ffd700');txt('Touche / P pour reprendre • R pour le menu',W/2,400,26,'#fff')}
-  if(state==='ending')drawEndingBanner();
 }
 function drawSpiderResult(){
   bg(W/2,H/2,.8);const w=G.won;
@@ -799,3 +841,101 @@ function drawMatch(){
   for(const q of G.parts){g.globalAlpha=Math.max(0,q.l);g.fillStyle=q.col||'#ffe96a';g.fillRect(q.x,q.y,4,4)}
   g.globalAlpha=1;
   drawPops();
+  if(state!=='ending'){
+    txt(`${G.p.score} - ${G.r.score}`,W/2,45,46,'#ffd700');
+    txt(`Temps : ${Math.ceil(G.t)} s`,W/2,90,26,'#fff');
+  }
+}
+
+/* ---------- boucle principale et événements ---------- */
+function loop(t){
+  const dt=Math.min(0.05,(t-last)/1000);last=t;
+  if(state==='play'||state==='ending'||state==='count'){
+    update(dt);
+    if(net.role==='host')netTick(dt);
+    else if(net.role==='guest')guestTick(dt);
+  }
+  g.clearRect(0,0,W,H);
+  if(state==='menu')drawMenu();
+  else if(state==='qmenu')drawQMenu();
+  else if(state==='smenu')drawSMenu();
+  else if(state==='rmenu')drawRMenu();
+  else if(state==='board')drawBoard();
+  else if(state==='lobby')drawLobby();
+  else if(state==='race_res')drawRaceResult();
+  else if(state==='spider_res')drawSpiderResult();
+  else if(state==='match_res')drawMatchResult();
+  else drawGame();
+
+  requestAnimationFrame(loop);
+}
+
+const getM=e=>{
+  const rc=cv.getBoundingClientRect();
+  const clX=e.touches?e.touches[0].clientX:e.clientX;
+  const clY=e.touches?e.touches[0].clientY:e.clientY;
+  return{x:(clX-rc.left)*(W/rc.width),y:(clY-rc.top)*(H/rc.height)};
+};
+
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();keys[k]=true;
+  if(k===' ')ability();
+  if(k==='p'){if(state==='play')state='pause';else if(state==='pause')state='play'}
+  if(k==='m')setMute(!muted);
+  if(k==='r'&&['pause','race_res','spider_res','match_res'].includes(state))backToMenu();
+});
+window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
+
+const joy={on:false,x:0,y:0};
+cv.addEventListener('pointerdown',e=>{
+  getAudioCtx();
+  const m=getM(e);
+  if(state==='menu'){
+    if(hit(homeR(0),m))state='qmenu';
+    else if(hit(homeR(1),m))state='rmenu';
+    else if(hit(homeR(2),m))state='smenu';
+    else if(hit(nameR,m))askName();
+    else if(hit(boardR,m))state='board';
+    else if(COARSE&&hit(swapR,m))setSwap(!swap);
+    return;
+  }
+  if(state==='qmenu')return qmenuClick(m);
+  if(state==='rmenu')return rmenuClick(m);
+  if(state==='smenu')return smenuClick(m);
+  if(state==='board')return boardClick(m);
+  if(state==='lobby')return lobbyClick(m);
+  if(state==='race_res'||state==='spider_res'||state==='match_res'){backToMenu();return}
+  if(state==='pause'){state='play';return}
+
+  if(hit(pauseR,m)){state='pause';return}
+  if(hit(muteR,m)){setMute(!muted);return}
+  if(!COARSE&&dist(m,abP)<abP.r){ability();return}
+  touch=m;
+});
+cv.addEventListener('pointermove',e=>{if(touch)touch=getM(e)});
+cv.addEventListener('pointerup',()=>touch=null);
+cv.addEventListener('pointercancel',()=>touch=null);
+
+// Boutons mobiles tactiles latéraux
+const pwBtn=document.getElementById('pw'),joyEl=document.getElementById('joy'),knobEl=document.getElementById('knob');
+if(pwBtn){
+  pwBtn.addEventListener('pointerdown',e=>{e.preventDefault();getAudioCtx();ability()});
+}
+if(joyEl&&knobEl){
+  const center={x:50,y:50};
+  const handleJoy=e=>{
+    const rect=joyEl.getBoundingClientRect();
+    const cx=e.clientX-rect.left,cy=e.clientY-rect.top;
+    let dx=cx-50,dy=cy-50,l=Math.hypot(dx,dy);
+    if(l>40){dx=dx/l*40;dy=dy/l*40}
+    knobEl.style.transform=`translate(${dx}px,${dy}px)`;
+    joy.x=dx/40;joy.y=dy/40;joy.on=true;
+  };
+  joyEl.addEventListener('pointerdown',e=>{e.preventDefault();getAudioCtx();handleJoy(e)});
+  window.addEventListener('pointermove',e=>{if(joy.on)handleJoy(e)});
+  const endJoy=()=>{joy.on=false;joy.x=0;joy.y=0;if(knobEl)knobEl.style.transform='none'};
+  window.addEventListener('pointerup',endJoy);
+  window.addEventListener('pointercancel',endJoy);
+}
+
+boot();
