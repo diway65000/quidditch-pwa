@@ -28,10 +28,9 @@ const swapR={x:W/2-150,y:645,w:300,h:44};
 let swap=false;try{const s=localStorage.getItem('quid_swap');if(s!==null)swap=(s==='1')}catch(e){}
 function setSwap(v){
   swap=v;
-  document.body.classList.toggle('swap',v);
+  if(document.body)document.body.classList.toggle('swap',v);
   try{localStorage.setItem('quid_swap',v?'1':'0')}catch(e){}
 }
-setSwap(swap);
 
 // Gestion des paliers de vitesse (0 = standard, 1, 2, 3)
 let speedLevel=0;
@@ -91,6 +90,7 @@ async function aud(u){const b=await(await fetch('assets/'+u)).blob();return new 
 async function boot(){
   g.fillStyle='#0a0a14';g.fillRect(0,0,W,H);txt('Chargement…',W/2,H/2,44,'#ffd700');
   await Promise.all(Object.keys(FILES).map(async k=>{A[k]=await loadImg(FILES[k])}));
+  setSwap(swap);
   setupControlsUI();
   requestAnimationFrame(loop);
   aud('musique_magie.mp3').then(a=>{
@@ -283,7 +283,7 @@ function onData(m){
 function lobbyClick(m){
   if(hit(backR,m)){leave();state='qmenu';return}
   if(!net.role){if(hit(crR,m))hostGame();else if(hit(joR,m))joinGame()}
-  else if(net.role==='host'&&net.ready)CH.forEach((c,i)=>{if(hit(cardR(i),m))newGame(c);net.inp={ax:0,ay:0};net.conn.send({t:'start',ch:c.id,diff})}});
+  else if(net.role==='host'&&net.ready)CH.forEach((c,i)=>{if(hit(cardR(i),m)){newGame(c);net.inp={ax:0,ay:0};net.conn.send({t:'start',ch:c.id,diff})}});
 }
 function drawLobby(){
   bg(W/2,H/2,.7);txt('JEU EN LIGNE',W/2,50,44,'#ffd700');
@@ -612,7 +612,7 @@ function cards(){CH.forEach((c,i)=>{const r=cardR(i);rbox(r,'rgba(30,30,55,.9)',
 function difs(){txt('Difficulté',W/2,515,24,'#fff');DIF.forEach((d,i)=>{const r=difR(i);rbox(r,i===diff?'#ffd700':'#32324a');txt(d.n,r.x+80,r.y+26,24,i===diff?'#0a0a14':'#fff')})}
 function tile(i,title,sub,col){const r=homeR(i);rbox(r,'rgba(20,20,40,.88)',col);
   txt(title,r.x+r.w/2,r.y+225,32,col);sub.forEach((t,j)=>txt(t,r.x+r.w/2,r.y+272+j*28,20,'#ddd'));return r}
-const VERSION='v19';
+const VERSION='v20';
 function drawMenu(){
   bg(W/2,H/2,.6);txt(VERSION,24,H-16,16,'#9a9ab0','left');
   txt('QUIDDITCH CHAMPIONSHIP',W/2,90,64,'#ffd700');
@@ -897,7 +897,7 @@ function loop(t){
   const dt=Math.min(0.05,(t-last)/1000);last=t;
 
   const inGame=['play','count','pause','ending'].includes(state);
-  document.body.classList.toggle('ig',inGame);
+  if(document.body)document.body.classList.toggle('ig',inGame);
   
   // Affichage des crans de vitesse (+ / -) pour la course et la forêt
   const hasSpeedLevels=inGame&&G&&(G.mode==='race'||G.mode==='spider');
@@ -1077,4 +1077,8 @@ function setupControlsUI(){
   }
 }
 
-boot();
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',boot);
+}else{
+  boot();
+}
