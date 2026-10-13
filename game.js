@@ -4,7 +4,7 @@ const A={},keys={};
 const FILES={fond:'stade.jpg',vif:'vif_or.png',harry:'harry.png',drago:'drago.png',hermione:'hermione.png',elise:'elise.png',hugo:'hugo.png',foret:'foret.jpg',tribune:'tribune.jpg'};
 const VS=130/90;
 const CH=[
- {id:'harry',nom:'Harry',vit:8,h:90,cap:'Turbo',desc:'Vitesse x1.6 (3 s)',nat:1},
+ {id:'harry',nom:'Harry',vit:8,h:90,cap:'Turbo',desc:'Vitesse x1.8 (3 s)',nat:1},
  {id:'hermione',nom:'Hermione',vit:7,h:90,cap:'Bouclier',desc:'Immunité cognards (3 s)',nat:1},
  {id:'elise',nom:'Elise',vit:9,h:90,cap:'Petrificus',desc:'Fige rival + cognards (3 s)',nat:1},
  {id:'hugo',nom:'Hugo',vit:8,h:90,cap:'Repulso',desc:'Onde de choc repulsive',nat:1}];
@@ -149,6 +149,7 @@ function useAb(o,id){
     o.cd=10;
   }else if(id==='hugo'){
     // Pouvoir Repulso surpuissant (durée de la bulle active : 1.5 s)
+    o.cd=10;
     o.repulso=1.5;
     burst(o.x,o.y,'#ffffff');
     burst(o.x,o.y,'#70d6ff');
